@@ -138,3 +138,59 @@ button:hover {
 .chunk > *:last-child {
   margin-bottom: 0;
 }
+
+.chunk-actions {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e4e8;
+}
+
+.anchor-btn {
+  margin-top: 0;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.85rem;
+  background: #6366f1;
+}
+
+.anchor-btn:hover {
+  background: #4f46e5;
+}
+
+.anchor-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.anchor-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.anchor-tag {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  color: #2563eb;
+  text-decoration: none;
+  font-family: monospace;
+}
+
+.anchor-tag:hover {
+  background: #dbeafe;
+}
+
+.anchor-hash {
+  color: #9ca3af;
+  text-decoration: none;
+  font-size: 0.85em;
+  margin-right: 0.25rem;
+}
+
+.anchor-hash:hover {
+  color: #2563eb;
+}

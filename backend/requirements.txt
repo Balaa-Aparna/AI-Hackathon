@@ -1,3 +1,6 @@
 fastapi
 uvicorn[standard]
 python-multipart
+anthropic
+python-dotenv
+eval_type_backport

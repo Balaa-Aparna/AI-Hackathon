@@ -2,10 +2,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import anthropic
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
+# Load backend/.env so ANTHROPIC_API_KEY is available to the SDK.
+load_dotenv()
+
+# Reads ANTHROPIC_API_KEY from the environment.
+client = anthropic.Anthropic()
+
+MODEL = "claude-opus-4-8"
 
 app = FastAPI(title="Doc Prompt API")
 
@@ -103,9 +113,19 @@ def prompt(req: PromptRequest):
             raise HTTPException(status_code=404, detail="Document not found")
         context = doc["text"]
 
-    # TODO: wire up a real LLM call here (e.g. the Anthropic API).
-    answer = (
-        f"[stub] You asked: {req.prompt!r}. "
-        f"Context length: {len(context)} chars."
-    )
+    system = "You are a helpful assistant that answers questions about the user's document."
+    if context:
+        system += f"\n\nHere is the document the user is asking about:\n\n{context}"
+
+    try:
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=4096,
+            system=system,
+            messages=[{"role": "user", "content": req.prompt}],
+        )
+    except anthropic.APIError as exc:
+        raise HTTPException(status_code=502, detail=f"LLM request failed: {exc}") from exc
+
+    answer = "".join(block.text for block in message.content if block.type == "text")
     return PromptResponse(answer=answer)
