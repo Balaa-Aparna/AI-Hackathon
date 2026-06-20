@@ -3,4 +3,6 @@ uvicorn[standard]
 python-multipart
 anthropic
 python-dotenv
+requests
+beautifulsoup4
 eval_type_backport

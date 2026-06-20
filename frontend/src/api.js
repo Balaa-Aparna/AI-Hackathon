@@ -14,6 +14,19 @@ export async function uploadDocument(file) {
   return res.json();
 }
 
+export async function fetchUrl(url) {
+  const res = await fetch("/api/fetch-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch URL");
+  }
+  return res.json();
+}
+
 export async function getDocument(documentId) {
   const res = await fetch(`/api/documents/${documentId}`);
   if (!res.ok) throw new Error("Failed to load document");

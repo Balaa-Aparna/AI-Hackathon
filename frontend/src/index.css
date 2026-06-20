@@ -57,6 +57,7 @@ textarea {
 
 button {
   margin-top: 0.5rem;
+  margin-left: 0.5rem;
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 6px;
@@ -131,11 +132,11 @@ button:hover {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.chunk > *:first-child {
+.chunk>*:first-child {
   margin-top: 0;
 }
 
-.chunk > *:last-child {
+.chunk>*:last-child {
   margin-bottom: 0;
 }
 
