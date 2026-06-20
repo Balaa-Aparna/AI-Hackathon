@@ -115,3 +115,26 @@ button:hover {
   border: 1px solid #e2e4e8;
   border-radius: 6px;
 }
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.chunk {
+  background: #fff;
+  border: 1px solid #e2e4e8;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.chunk > *:first-child {
+  margin-top: 0;
+}
+
+.chunk > *:last-child {
+  margin-bottom: 0;
+}

@@ -1,117 +1,98 @@
-import { useEffect, useState } from "react";
-import { listDocuments, uploadDocument, sendPrompt, getDocument } from "./api";
-import DocumentPage from "./DocumentPage.jsx";
+import { useState, useRef } from "react";
+import { marked } from "marked";
 
 export default function App() {
-  const [documents, setDocuments] = useState([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [prompt, setPrompt] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [status, setStatus] = useState("");
-  const [result, setResult] = useState(null);
+  const [rawMarkdown, setRawMarkdown] = useState("");
+  const [sections, setSections] = useState([]);
+  const [mode, setMode] = useState("full");
+  const [rendered, setRendered] = useState(null);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    refreshDocuments();
-  }, []);
+  function chunkBySubHeadings(md) {
+    const lines = md.split("\n");
+    const chunks = [];
+    let current = [];
 
-  async function refreshDocuments() {
-    try {
-      setDocuments(await listDocuments());
-    } catch (err) {
-      setStatus(err.message);
-    }
+    lines.forEach((line) => {
+      if (/^##\s+/.test(line)) {
+        if (current.length) {
+          chunks.push(current.join("\n"));
+          current = [];
+        }
+      }
+      current.push(line);
+    });
+
+    if (current.length) chunks.push(current.join("\n"));
+    return chunks;
   }
 
-  async function handleUpload(e) {
+  function handleFile(e) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setStatus("Uploading…");
-    try {
-      const doc = await uploadDocument(file);
-      setStatus(`Uploaded ${doc.name}`);
-      setSelectedId(doc.id);
-      await refreshDocuments();
-    } catch (err) {
-      setStatus(err.message);
-    } finally {
-      e.target.value = "";
-    }
-  }
 
-  async function handleAsk(e) {
-    e.preventDefault();
-    if (!prompt.trim()) return;
-    if (!selectedId) {
-      setStatus("Select a document first.");
+    if (!file.name.toLowerCase().match(/\.(md|markdown)$/)) {
+      setError("Only Markdown files allowed.");
+      setRendered(null);
       return;
     }
-    setStatus("Thinking…");
-    setAnswer("");
-    try {
-      const [res, document] = await Promise.all([
-        sendPrompt(prompt, selectedId),
-        getDocument(selectedId),
-      ]);
-      setAnswer(res.answer);
-      setStatus("");
-      setResult({ document, answer: res.answer, prompt });
-    } catch (err) {
-      setStatus(err.message);
-    }
+
+    setError("");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const md = ev.target.result;
+      setRawMarkdown(md);
+      setSections(chunkBySubHeadings(md));
+      setRendered(null);
+    };
+    reader.readAsText(file);
   }
 
-  if (result) {
-    return (
-      <DocumentPage
-        document={result.document}
-        answer={result.answer}
-        prompt={result.prompt}
-        onBack={() => setResult(null)}
-      />
-    );
+  function render() {
+    if (!rawMarkdown) return;
+
+    if (mode === "full") {
+      setRendered([rawMarkdown]);
+    } else {
+      setRendered(sections);
+    }
   }
 
   return (
     <main className="container">
-      <h1>Doc Prompt</h1>
+      <h1>Source Viewer</h1>
 
-      <section className="card">
-        <h2>1. Upload a document</h2>
-        <input type="file" onChange={handleUpload} />
-        <ul className="doc-list">
-          {documents.map((doc) => (
-            <li key={doc.id}>
-              <label>
-                <input
-                  type="radio"
-                  name="doc"
-                  value={doc.id}
-                  checked={selectedId === doc.id}
-                  onChange={() => setSelectedId(doc.id)}
-                />
-                {doc.name}
-              </label>
-            </li>
-          ))}
-          {documents.length === 0 && <li className="muted">No documents yet.</li>}
-        </ul>
-      </section>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".md,.markdown"
+        onChange={handleFile}
+      />
 
-      <section className="card">
-        <h2>2. Ask a question</h2>
-        <form onSubmit={handleAsk}>
-          <textarea
-            rows={3}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Ask something about the selected document…"
-          />
-          <button type="submit">Send</button>
-        </form>
-        {answer && <pre className="answer">{answer}</pre>}
-      </section>
+      <div className="controls">
+        <select value={mode} onChange={(e) => setMode(e.target.value)}>
+          <option value="full">Full Article</option>
+          <option value="auto">Auto Chunk (Sub-headings)</option>
+        </select>
+        <button onClick={render}>Render</button>
+      </div>
 
-      {status && <p className="status">{status}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
+      <div className="viewer">
+        {rendered === null ? (
+          <p className="muted">Upload a Markdown file...</p>
+        ) : (
+          rendered.map((sec, i) => (
+            <div
+              key={i}
+              className="chunk"
+              dangerouslySetInnerHTML={{ __html: marked.parse(sec) }}
+            />
+          ))
+        )}
+      </div>
     </main>
   );
 }
