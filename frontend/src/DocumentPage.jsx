@@ -18,13 +18,6 @@ export default function DocumentPage({ document, answer, prompt, onBack }) {
         </section>
       )}
 
-      {answer && (
-        <section className="card">
-          <h2>Answer</h2>
-          <pre className="answer">{answer}</pre>
-        </section>
-      )}
-
       <section className="card">
         <h2>Uploaded file</h2>
         {document.is_text ? (
