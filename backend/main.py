@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="Doc Prompt API")
@@ -53,9 +54,44 @@ async def upload(file: UploadFile = File(...)):
         text = ""
 
     doc_id = str(len(DOCUMENTS) + 1)
-    (UPLOAD_DIR / f"{doc_id}_{file.filename}").write_bytes(raw)
-    DOCUMENTS[doc_id] = {"name": file.filename, "text": text}
+    path = UPLOAD_DIR / f"{doc_id}_{file.filename}"
+    path.write_bytes(raw)
+    DOCUMENTS[doc_id] = {
+        "name": file.filename,
+        "text": text,
+        "path": str(path),
+        "content_type": file.content_type or "application/octet-stream",
+    }
     return {"id": doc_id, "name": file.filename}
+
+
+@app.get("/api/documents/{doc_id}")
+def get_document(doc_id: str):
+    doc = DOCUMENTS.get(doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {
+        "id": doc_id,
+        "name": doc["name"],
+        "text": doc["text"],
+        "content_type": doc["content_type"],
+        "is_text": bool(doc["text"]),
+    }
+
+
+@app.get("/api/documents/{doc_id}/raw")
+def get_document_raw(doc_id: str):
+    doc = DOCUMENTS.get(doc_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return FileResponse(
+        doc["path"],
+        media_type=doc["content_type"],
+        filename=doc["name"],
+        # "inline" lets the browser render the file in the preview <iframe>;
+        # the default "attachment" would force a download instead.
+        content_disposition_type="inline",
+    )
 
 
 @app.post("/api/prompt", response_model=PromptResponse)

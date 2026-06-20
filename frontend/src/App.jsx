@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { listDocuments, uploadDocument, sendPrompt } from "./api";
+import { listDocuments, uploadDocument, sendPrompt, getDocument } from "./api";
+import DocumentPage from "./DocumentPage.jsx";
 
 export default function App() {
   const [documents, setDocuments] = useState([]);
@@ -7,6 +8,7 @@ export default function App() {
   const [prompt, setPrompt] = useState("");
   const [answer, setAnswer] = useState("");
   const [status, setStatus] = useState("");
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
     refreshDocuments();
@@ -39,15 +41,34 @@ export default function App() {
   async function handleAsk(e) {
     e.preventDefault();
     if (!prompt.trim()) return;
+    if (!selectedId) {
+      setStatus("Select a document first.");
+      return;
+    }
     setStatus("Thinking…");
     setAnswer("");
     try {
-      const res = await sendPrompt(prompt, selectedId);
+      const [res, document] = await Promise.all([
+        sendPrompt(prompt, selectedId),
+        getDocument(selectedId),
+      ]);
       setAnswer(res.answer);
       setStatus("");
+      setResult({ document, answer: res.answer, prompt });
     } catch (err) {
       setStatus(err.message);
     }
+  }
+
+  if (result) {
+    return (
+      <DocumentPage
+        document={result.document}
+        answer={result.answer}
+        prompt={result.prompt}
+        onBack={() => setResult(null)}
+      />
+    );
   }
 
   return (

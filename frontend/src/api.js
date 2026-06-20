@@ -14,6 +14,12 @@ export async function uploadDocument(file) {
   return res.json();
 }
 
+export async function getDocument(documentId) {
+  const res = await fetch(`/api/documents/${documentId}`);
+  if (!res.ok) throw new Error("Failed to load document");
+  return res.json();
+}
+
 export async function sendPrompt(prompt, documentId) {
   const res = await fetch("/api/prompt", {
     method: "POST",

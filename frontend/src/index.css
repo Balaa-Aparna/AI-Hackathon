@@ -83,3 +83,35 @@ button:hover {
   text-align: center;
   color: #6b7280;
 }
+
+.link-button {
+  margin: 0 0 1rem;
+  padding: 0;
+  background: none;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  background: none;
+  text-decoration: underline;
+}
+
+.file-content {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 60vh;
+  overflow: auto;
+  background: #f7f8fa;
+  border: 1px solid #e2e4e8;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.file-frame {
+  width: 100%;
+  height: 60vh;
+  border: 1px solid #e2e4e8;
+  border-radius: 6px;
+}
