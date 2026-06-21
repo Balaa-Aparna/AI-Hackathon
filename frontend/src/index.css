@@ -44,7 +44,7 @@ body {
 
 /* ---------- top bar ---------- */
 .topbar {
-  max-width: 1040px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 0.5rem;
   display: flex;
@@ -168,7 +168,7 @@ body {
 
 /* ---------- main panel ---------- */
 .container {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 1.25rem auto 4rem;
   padding: 0 1.25rem;
 }
@@ -452,7 +452,7 @@ button:disabled {
 /* ---------- step 3: chunk + side-panel editor ---------- */
 .chunk-row {
   display: grid;
-  grid-template-columns: 1fr minmax(220px, 0.7fr);
+  grid-template-columns: 1fr minmax(260px, 0.5fr);
   gap: 1rem;
   align-items: start;
 }
@@ -592,6 +592,39 @@ button:disabled {
   padding: 1.4rem 1.6rem;
   box-shadow: 0 4px 16px -12px rgba(74, 52, 30, 0.4);
   line-height: 1.65;
+  overflow-x: auto;
+}
+
+.chunk pre,
+.chunk table {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.chunk pre {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.chunk code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.88em;
+}
+
+.chunk table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.chunk th,
+.chunk td {
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.75rem;
+  text-align: left;
 }
 
 .chunk h1,
@@ -614,11 +647,6 @@ button:disabled {
   margin-bottom: 0;
 }
 
-.chunk-actions {
-  margin-top: 1.1rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--line);
-}
 
 .anchor-btn {
   padding: 0.4rem 0.95rem;
@@ -670,6 +698,104 @@ button:disabled {
 
 .anchor-hash:hover {
   color: var(--terra);
+}
+
+/* ---------- step 4: anchor review ---------- */
+.anchor-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.anchor-source-group {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 1.25rem 1.4rem;
+}
+
+.anchor-source-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.anchor-source-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.anchor-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ---------- step 5: reflect ---------- */
+.reflect-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.reflect-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reflect-label {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+/* ---------- step 6: generated post ---------- */
+.post-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 2rem 2.25rem;
+  margin-bottom: 1.75rem;
+  box-shadow: var(--shadow);
+}
+
+.post-text {
+  font-size: 1.15rem;
+  line-height: 1.7;
+  color: var(--ink);
+  margin: 0 0 1.5rem;
+  white-space: pre-wrap;
+}
+
+.post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+
+.post-wordcount {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.copy-btn {
+  padding: 0.45rem 1rem;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fdf7ec;
+}
+
+.copy-btn:hover {
+  background: #46403a;
 }
 
 /* ---------- document page (kept classes) ---------- */

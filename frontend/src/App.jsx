@@ -7,6 +7,9 @@ const STEPS = [
   { id: 1, name: "Anchor" },
   { id: 2, name: "Extract" },
   { id: 3, name: "Explore" },
+  { id: 4, name: "Review" },
+  { id: 5, name: "Reflect" },
+  { id: 6, name: "Post" },
 ];
 
 const STEP_HEADER = {
@@ -28,14 +31,36 @@ const STEP_HEADER = {
     lede:
       "Switch between sources, edit any chunk in its side panel, and drop anchors on the ideas that hold it together.",
   },
+  4: {
+    eyebrow: "Step 4 · Your Anchors",
+    title: <>Everything you <em>anchored.</em></>,
+    lede:
+      "All the ideas you marked across every source, collected in one place.",
+  },
+  5: {
+    eyebrow: "Step 5 · Reflect",
+    title: <>Your take. <em>Your intent.</em></>,
+    lede:
+      "Two questions — answer honestly before you move on.",
+  },
+  6: {
+    eyebrow: "Step 6 · Your Post",
+    title: <>Ready to <em>share.</em></>,
+    lede:
+      "Your research, your anchors, your take — distilled into one post.",
+  },
 };
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
+const noImgRenderer = new marked.Renderer();
+noImgRenderer.image = () => "";
+
 function parseWithAnchors(md) {
   const renderer = new marked.Renderer();
+  renderer.image = () => "";
   renderer.heading = ({ text, depth }) => {
     const id = slugify(text);
     return `<h${depth} id="${id}"><a class="anchor-hash" href="#${id}">#</a> ${text}</h${depth}>`;
@@ -86,13 +111,64 @@ export default function App() {
   // anchors (editable): key `${linkIdx}:${chunkIdx}` -> string[] | null (loading)
   const [anchoredChunks, setAnchoredChunks] = useState({});
 
+  // Step 5
+  const [achieve, setAchieve] = useState("");
+  const [opinion, setOpinion] = useState("");
+
+  // Step 6
+  const [generatedPost, setGeneratedPost] = useState("");
+  const [postLoading, setPostLoading] = useState(false);
+  const [postError, setPostError] = useState("");
+  const [copied, setCopied] = useState(false);
+
   const canStep2 = relatedLinks !== null;
   const canStep3 = relatedLinks !== null && relatedLinks.length > 0;
+  const canStep4 = canStep3;
+  const canStep5 = canStep4;
+  const canStep6 = !!generatedPost;
 
   function goToStep(id) {
     if (id === 2 && !canStep2) return;
     if (id === 3 && !canStep3) return;
+    if (id === 4 && !canStep4) return;
+    if (id === 5 && !canStep5) return;
+    if (id === 6 && !canStep6) return;
     setStep(id);
+  }
+
+  async function handleFinalize() {
+    setPostError("");
+    setPostLoading(true);
+    setGeneratedPost("");
+    setCopied(false);
+
+    const allAnchors = [];
+    Object.values(anchoredChunks).forEach((anchors) => {
+      if (Array.isArray(anchors)) anchors.forEach((a) => { if (a) allAnchors.push(a); });
+    });
+
+    try {
+      const res = await fetch("/api/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: message, anchors: allAnchors, achieve, opinion }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+      setGeneratedPost(data.post);
+      setStep(6);
+    } catch (err) {
+      setPostError(err.message);
+    } finally {
+      setPostLoading(false);
+    }
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(generatedPost).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
   async function handleSend() {
@@ -224,7 +300,12 @@ export default function App() {
 
       <ol className="steps">
         {STEPS.map((s) => {
-          const locked = (s.id === 2 && !canStep2) || (s.id === 3 && !canStep3);
+          const locked =
+            (s.id === 2 && !canStep2) ||
+            (s.id === 3 && !canStep3) ||
+            (s.id === 4 && !canStep4) ||
+            (s.id === 5 && !canStep5) ||
+            (s.id === 6 && !canStep6);
           return (
             <li
               key={s.id}
@@ -345,33 +426,17 @@ export default function App() {
                           <div className="chunk">
                             <div
                               dangerouslySetInnerHTML={{
-                                __html: hasAnchors && anchors ? parseWithAnchors(text) : marked.parse(text),
+                                __html: hasAnchors && anchors ? parseWithAnchors(text) : marked.parse(text, { renderer: noImgRenderer }),
                               }}
                             />
-                            <div className="chunk-actions">
-                              {!hasAnchors ? (
-                                <button className="anchor-btn" onClick={() => createAnchors(activeLink, ci)}>
-                                  Create Anchors
-                                </button>
-                              ) : anchors === null ? (
-                                <span className="anchor-label">Extracting anchors…</span>
-                              ) : (
-                                <div className="anchor-list">
-                                  <span className="anchor-label">Anchors:</span>
-                                  {anchors.map((a, j) => (
-                                    <span key={j} className="anchor-tag">{a || "—"}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
                           </div>
 
                           <aside className="chunk-editor">
-                            <label className="anchor-label">Edit anchors</label>
+                            <label className="anchor-label">Anchors</label>
                             {!hasAnchors ? (
-                              <p className="muted anchor-hint">
-                                Create anchors to edit them here.
-                              </p>
+                              <button className="anchor-btn" onClick={() => createAnchors(activeLink, ci)}>
+                                Create Anchors
+                              </button>
                             ) : anchors === null ? (
                               <span className="anchor-label">Extracting anchors…</span>
                             ) : (
@@ -413,6 +478,121 @@ export default function App() {
 
               <div className="controls">
                 <button onClick={() => goToStep(2)} className="ghost-btn">← Sources</button>
+                <button onClick={() => goToStep(4)}>Review Anchors →</button>
+              </div>
+            </>
+          )}
+
+          {/* ---------- STEP 4: anchor review ---------- */}
+          {step === 4 && (
+            <>
+              {(() => {
+                const byLink = {};
+                Object.entries(anchoredChunks).forEach(([key, anchors]) => {
+                  if (!Array.isArray(anchors) || anchors.length === 0) return;
+                  const linkIdx = Number(key.split(":")[0]);
+                  if (!byLink[linkIdx]) byLink[linkIdx] = [];
+                  anchors.forEach((a) => { if (a) byLink[linkIdx].push(a); });
+                });
+
+                const entries = Object.entries(byLink);
+                if (entries.length === 0) {
+                  return <p className="muted">No anchors yet — go back to Step 3 to create some.</p>;
+                }
+
+                return (
+                  <div className="anchor-summary">
+                    {entries.map(([linkIdx, anchors]) => {
+                      const link = relatedLinks?.[Number(linkIdx)];
+                      return (
+                        <div key={linkIdx} className="anchor-source-group">
+                          <div className="anchor-source-header">
+                            <span className="source-index">{Number(linkIdx) + 1}</span>
+                            <span className="anchor-source-name">
+                              {link?.title || hostOf(link?.url || "")}
+                            </span>
+                          </div>
+                          <div className="anchor-tag-cloud">
+                            {anchors.map((a, i) => (
+                              <span key={i} className="anchor-tag">{a}</span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              <div className="controls">
+                <button onClick={() => goToStep(3)} className="ghost-btn">← Explore</button>
+                <button onClick={() => goToStep(5)}>Reflect →</button>
+              </div>
+            </>
+          )}
+
+          {/* ---------- STEP 5: reflect ---------- */}
+          {step === 5 && (
+            <>
+              <div className="reflect-fields">
+                <div className="reflect-field">
+                  <label className="reflect-label">What do you want to achieve with this?</label>
+                  <textarea
+                    placeholder="Describe your goal or intention…"
+                    value={achieve}
+                    onChange={(e) => setAchieve(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <div className="reflect-field">
+                  <label className="reflect-label">What do you genuinely think about it?</label>
+                  <textarea
+                    placeholder="Share your honest perspective…"
+                    value={opinion}
+                    onChange={(e) => setOpinion(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              {postError && <p className="error-text">{postError}</p>}
+
+              <div className="controls">
+                <button onClick={() => goToStep(4)} className="ghost-btn">← Anchors</button>
+                <button
+                  onClick={handleFinalize}
+                  disabled={postLoading || (!achieve.trim() && !opinion.trim())}
+                >
+                  {postLoading ? "Generating…" : "Finalize"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ---------- STEP 6: generated post ---------- */}
+          {step === 6 && (
+            <>
+              <div className="post-card">
+                <p className="post-text">{generatedPost}</p>
+                <div className="post-footer">
+                  <span className="post-wordcount">
+                    {generatedPost.trim().split(/\s+/).filter(Boolean).length} words
+                  </span>
+                  <button className="copy-btn" onClick={handleCopy}>
+                    {copied ? "Copied!" : "Copy post"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="controls">
+                <button onClick={() => goToStep(5)} className="ghost-btn">← Reflect</button>
+                <button
+                  className="ghost-btn"
+                  onClick={handleFinalize}
+                  disabled={postLoading}
+                >
+                  {postLoading ? "Regenerating…" : "Regenerate"}
+                </button>
               </div>
             </>
           )}
