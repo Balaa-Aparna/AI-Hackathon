@@ -6,3 +6,6 @@ python-dotenv
 requests
 beautifulsoup4
 eval_type_backport
+playwright
+browserbase
+markdownify

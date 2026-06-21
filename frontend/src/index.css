@@ -607,7 +607,7 @@ button:disabled {
 .chunk-row {
   display: grid;
   grid-template-columns: 1fr minmax(260px, 0.5fr);
-  gap: 1rem;
+  gap: 0.7rem;
   align-items: start;
 }
 
@@ -735,17 +735,17 @@ button:disabled {
 .viewer {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  margin-top: 1.75rem;
+  gap: 0.7rem;
+  margin-top: 1.25rem;
 }
 
 .chunk {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 1.4rem 1.6rem;
+  border-radius: 14px;
+  padding: 0.85rem 1.1rem;
   box-shadow: 0 4px 16px -12px rgba(74, 52, 30, 0.4);
-  line-height: 1.65;
+  line-height: 1.5;
   overflow-x: auto;
 }
 
@@ -1049,4 +1049,173 @@ button:disabled {
   select {
     width: 100%;
   }
+}
+
+/* ---------- voice: dictation mic + read-aloud ---------- */
+.field-with-mic {
+  position: relative;
+}
+
+.field-with-mic textarea {
+  width: 100%;
+  padding-right: 3rem;
+}
+
+.mic-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--terra-dark);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mic-btn:hover {
+  background: var(--terra-soft);
+  border-color: var(--terra);
+}
+
+.mic-in-field {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+}
+
+.mic-btn.listening {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: #fdf7ec;
+  animation: mic-pulse 1.4s ease-out infinite;
+}
+
+@keyframes mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(193, 112, 79, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(193, 112, 79, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(193, 112, 79, 0);
+  }
+}
+
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--terra-dark);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.speak-btn:hover {
+  background: var(--terra-soft);
+  border-color: var(--terra);
+}
+
+.speak-btn.speaking {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: #fdf7ec;
+}
+
+.speak-chunk {
+  align-self: flex-start;
+  margin-bottom: 0.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mic-btn.listening {
+    animation: none;
+  }
+}
+
+/* ---------- step 6: short post vs long article toggle ---------- */
+.format-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+}
+
+.format-option {
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.format-option:hover:not(:disabled) {
+  color: var(--terra-dark);
+}
+
+.format-option.active {
+  background: var(--ink);
+  color: #fdf7ec;
+}
+
+.format-option:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.post-card.article {
+  text-align: left;
+}
+
+.post-article {
+  line-height: 1.7;
+}
+
+.post-article h1 {
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  margin: 0 0 0.75rem;
+}
+
+.post-article h2 {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.post-article p {
+  margin: 0 0 0.9rem;
+}
+
+.post-article a {
+  color: var(--terra-dark);
+  text-decoration: underline;
+}
+
+.post-article ul,
+.post-article ol {
+  margin: 0 0 0.9rem;
+  padding-left: 1.3rem;
+}
+
+.post-article > *:first-child {
+  margin-top: 0;
+}
+
+.post-article > *:last-child {
+  margin-bottom: 0;
 }
