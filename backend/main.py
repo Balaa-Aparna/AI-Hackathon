@@ -11,6 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from anchors import router as anchors_router
+from related_links import router as related_links_router
+
 # Load backend/.env so ANTHROPIC_API_KEY is available to the SDK.
 load_dotenv()
 
@@ -29,6 +32,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount the LLM-powered anchor extraction routes (POST /api/anchors).
+app.include_router(anchors_router)
+
+# Mount the Browserbase-powered related-links route (POST /api/related-links).
+app.include_router(related_links_router)
 
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

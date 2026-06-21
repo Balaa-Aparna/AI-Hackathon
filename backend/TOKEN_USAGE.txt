@@ -1,0 +1,68 @@
+TOKEN USAGE & COST REDUCTION — /api/anchors
+============================================
+
+This file documents how the anchor-extraction endpoint (backend/anchors.py)
+was tuned to reduce Anthropic API token cost, and what was deliberately left
+alone. Update it if the model or limits change.
+
+
+WHAT THE ENDPOINT DOES
+----------------------
+POST /api/anchors takes a chunk of document text and asks Claude to extract
+5-10 "structural anchor" phrases. Each click of "Create Anchors" in the
+frontend = one real API call (input tokens for the document + system prompt,
+output tokens for the returned anchors). So cost scales with how much text we
+send and which model we send it to.
+
+
+CHANGES MADE
+------------
+1. Switched model: claude-opus-4-8  ->  claude-haiku-4-5   (anchors.py: MODEL)
+
+   Anchor extraction is a constrained extraction task (tool-forced JSON
+   output), which smaller/faster models handle well. Haiku is ~80% cheaper
+   than Opus on both input and output.
+
+   Pricing per 1,000,000 tokens:
+     Model               Input    Output
+     claude-opus-4-8      $5.00    $25.00   (previous)
+     claude-sonnet-4-6    $3.00    $15.00
+     claude-haiku-4-5     $1.00     $5.00   (current)  <- ~80% cheaper than Opus
+
+2. Lowered max_tokens: 1024 -> 512   (anchors.py: client.messages.create)
+
+   The output is only 5-10 short phrases (a few hundred tokens at most).
+   max_tokens is a ceiling, not a fixed charge, so this mainly caps a runaway
+   response rather than guaranteeing savings — but it removes the worst case.
+
+
+OTHER LEVERS
+-------------------------------
+- Input cap: MAX_TEXT_CHARS = 50_000 (~12K tokens). Input is the bulk of the
+  per-call cost. Lower this if chunks rarely need the full size.
+- One small chunk per call: the document is split into chunks (App.jsx:
+  chunkBySubHeadings) and "Create Anchors" sends only ONE chunk at a time, not
+  the whole document. Each request therefore carries just that chunk's tokens,
+  so we never pay to send the full document in a single large call — and the
+  user only spends tokens on the chunks they actually ask anchors for.
+- Frontend caches results per chunk in a Map (App.jsx: anchoredChunks), so
+  re-rendering a chunk does NOT trigger another API call. Each chunk is only
+  sent to Claude once.
+- Output is capped at MAX_ANCHORS = 10 and deduped server-side (_clean).
+
+
+WHAT WAS NOT DONE, AND WHY
+--------------------------
+- Prompt caching: NOT used. The SYSTEM_PROMPT is only ~300 tokens, well below
+  the minimum cacheable prefix (4096 tokens on Opus and Haiku). The document
+  — the bulk of the input — changes on every call anyway, so there is no
+  reusable prefix to cache. Caching would add complexity for zero benefit here.
+
+
+NET EFFECT
+----------
+Model swap (Opus -> Haiku) is the dominant saving: roughly 1/5 the cost per
+call for equivalent output on this extraction task. The max_tokens cap is a
+secondary safety measure. Recommend A/B-checking anchor quality on a few real
+documents after the model swap; bump back up to Sonnet 4.6 if Haiku quality
+is insufficient before considering Opus again.

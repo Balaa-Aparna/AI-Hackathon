@@ -1,0 +1,28 @@
+PLACEHOLDERS — related links / Browserbase Search
+==================================================
+
+Endpoint added: POST /api/related-links
+File:           backend/related_links.py
+Returns:        4 related links { query, results: [{ title, url }, ...] }
+Auth:           BROWSERBASE_API_KEY (read from backend/.env)
+
+Things still to decide / edit later
+-----------------------------------
+
+#1  THE SEARCH QUERY
+    File:  backend/related_links.py
+    - PLACEHOLDER_QUERY  -> the fallback string searched when the caller sends
+      an empty `query`. Currently "REPLACE_ME: default related-links search
+      query". Replace with a real default, OR make the frontend always send a
+      query so this fallback is never hit.
+    - RelatedLinksRequest.query -> how the real query gets built has not been
+      decided yet (options: document topic, extracted anchors, an explicit
+      search box, the active chunk text, etc.). Wire the frontend to send the
+      chosen value here when that decision is made.
+
+Notes
+-----
+- numResults is fixed to 4 (NUM_RESULTS) per the requirement.
+- Queries are capped at 200 chars (MAX_QUERY_CHARS) because Browserbase
+  rejects queries outside 1-200 characters.
+

@@ -6,14 +6,6 @@ function slugify(text) {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
-function extractHeadings(md) {
-  const headings = [];
-  for (const match of md.matchAll(/^(#{1,6})\s+(.+)$/gm)) {
-    headings.push({ level: match[1].length, text: match[2].trim(), id: slugify(match[2].trim()) });
-  }
-  return headings;
-}
-
 function parseWithAnchors(md) {
   const renderer = new marked.Renderer();
   renderer.heading = ({ text, depth }) => {
@@ -29,7 +21,7 @@ export default function App() {
   const [mode, setMode] = useState("full");
   const [rendered, setRendered] = useState(null);
   const [error, setError] = useState("");
-  const [anchoredChunks, setAnchoredChunks] = useState(new Set());
+  const [anchoredChunks, setAnchoredChunks] = useState(new Map());
   const [url, setUrl] = useState("");
   const [loadingUrl, setLoadingUrl] = useState(false);
   const fileInputRef = useRef(null);
@@ -149,7 +141,7 @@ export default function App() {
         ) : (
           rendered.map((sec, i) => {
             const hasAnchors = anchoredChunks.has(i);
-            const headings = hasAnchors ? extractHeadings(sec) : [];
+            const anchors = anchoredChunks.get(i);
             return (
               <div key={i} className="chunk">
                 <div dangerouslySetInnerHTML={{ __html: hasAnchors ? parseWithAnchors(sec) : marked.parse(sec) }} />
@@ -158,17 +150,31 @@ export default function App() {
                     {!hasAnchors ? (
                       <button
                         className="anchor-btn"
-                        onClick={() => setAnchoredChunks(prev => new Set([...prev, i]))}
+                        onClick={async () => {
+                          setAnchoredChunks(prev => new Map([...prev, [i, null]]));
+                          try {
+                            const res = await fetch("/api/anchors", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ text: sec }),
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+                            setAnchoredChunks(prev => new Map([...prev, [i, data.anchors ?? []]]));
+                          } catch (err) {
+                            setAnchoredChunks(prev => new Map([...prev, [i, [`Error: ${err.message}`]]]));
+                          }
+                        }}
                       >
                         Create Anchors
                       </button>
+                    ) : anchors === null ? (
+                      <span className="anchor-label">Extracting anchors…</span>
                     ) : (
                       <div className="anchor-list">
                         <span className="anchor-label">Anchors:</span>
-                        {headings.map(h => (
-                          <a key={h.id} className="anchor-tag" href={`#${h.id}`}>
-                            {"#".repeat(h.level)} {h.text}
-                          </a>
+                        {anchors.map((a, j) => (
+                          <span key={j} className="anchor-tag">{a}</span>
                         ))}
                       </div>
                     )}
