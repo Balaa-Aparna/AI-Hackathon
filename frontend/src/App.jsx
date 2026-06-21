@@ -460,10 +460,11 @@ export default function App() {
             {/* ---------- STEP 1: prompt ---------- */}
             {step === 1 && (
               <>
-                <div className="controls" style={{ alignItems: "flex-end" }}>
-                  <div className="field-with-mic" style={{ flex: 1 }}>
+                <div className="reflect-field">
+                  <label className="reflect-label">What do you want to explore?</label>
+                  <div className="field-with-mic">
                     <textarea
-                      placeholder="What do you want to explore? (e.g., 'How to build a birdhouse?')"
+                      placeholder="e.g. 'How to build a birdhouse?'"
                       value={message}
                       onChange={(e) => setMessage(e.target.value.slice(0, MAX_PROMPT))}
                       maxLength={MAX_PROMPT}
@@ -478,12 +479,9 @@ export default function App() {
                       onResult={(t) => setMessage((m) => appendSpoken(m, t).slice(0, MAX_PROMPT))}
                     />
                   </div>
-                  <button onClick={handleSend} disabled={linksLoading || !message.trim()}>
-                    {linksLoading ? "Searching…" : "Sent"}
-                  </button>
-                </div>
-                <div className="char-count">
-                  {message.length}/{MAX_PROMPT}
+                  <div className="char-count">
+                    {message.length}/{MAX_PROMPT}
+                  </div>
                 </div>
                 <div className="reflect-field" style={{ marginTop: "1rem" }}>
                   <label className="reflect-label">What do you want to achieve with this? <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional — shapes which anchors get extracted)</span></label>
@@ -500,6 +498,11 @@ export default function App() {
                       onResult={(t) => setAchieve((v) => appendSpoken(v, t))}
                     />
                   </div>
+                </div>
+                <div className="controls" style={{ justifyContent: "flex-end", marginTop: "1rem" }}>
+                  <button onClick={handleSend} disabled={linksLoading || !message.trim()}>
+                    {linksLoading ? "Searching…" : "Send"}
+                  </button>
                 </div>
                 {linksError && <p className="error-text">Related links error: {linksError}</p>}
               </>
