@@ -37,7 +37,7 @@ export default function App() {
     let current = [];
 
     lines.forEach((line) => {
-      if (/^##\s+/.test(line)) {
+      if (/^#{1,2}\s+/.test(line)) {
         if (current.length) {
           chunks.push(current.join("\n"));
           current = [];
