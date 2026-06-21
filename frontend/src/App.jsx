@@ -371,7 +371,7 @@ export default function App() {
                 <div className="controls" style={{ alignItems: "flex-end" }}>
                   <div className="field-with-mic" style={{ flex: 1 }}>
                     <textarea
-                      placeholder="What do you want to explore? (e.g., 'What is the Future of AI in Education?')"
+                      placeholder="What do you want to explore? (e.g., 'How to build a birdhouse?')"
                       value={message}
                       onChange={(e) => setMessage(e.target.value.slice(0, MAX_PROMPT))}
                       maxLength={MAX_PROMPT}
