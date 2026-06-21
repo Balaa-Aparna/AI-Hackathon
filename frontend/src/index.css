@@ -871,6 +871,126 @@ button:disabled {
   border-radius: 14px;
 }
 
+/* ---------- step 4: compose ---------- */
+.compose-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.compose-form textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 0.8rem 1rem;
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+.compose-form textarea:focus {
+  outline: none;
+  border-color: var(--terra);
+  box-shadow: 0 0 0 3px var(--terra-soft);
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.mode-btn {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.84rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.mode-btn:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.mode-btn.active {
+  background: var(--ink);
+  color: #fdf7ec;
+  border-color: var(--ink);
+}
+
+.post-result {
+  margin-top: 1.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  box-shadow: var(--shadow);
+}
+
+.post-meta {
+  margin-bottom: 1rem;
+}
+
+.post-body {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+  margin-bottom: 1.25rem;
+}
+
+.post-body p {
+  margin: 0 0 0.9em;
+}
+
+.post-body p:last-child {
+  margin-bottom: 0;
+}
+
+.copy-btn {
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  padding: 0.4rem 1rem;
+}
+
+.anchors-used {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.anchors-used summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.anchors-used ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.anchors-used li {
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
+/* ---------- responsive ---------- */
 @media (max-width: 640px) {
   .nav {
     display: none;
@@ -887,4 +1007,5 @@ button:disabled {
   select {
     width: 100%;
   }
+
 }
