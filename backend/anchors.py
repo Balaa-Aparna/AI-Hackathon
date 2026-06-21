@@ -49,6 +49,12 @@ Ask yourself: "Would this anchor still make sense if I only had this heading's s
 
 ---
 
+## GOAL FOCUS (when provided)
+
+If a writing goal is given, prefer anchors that are directly relevant to achieving that goal. When two claims are equally valid anchors structurally, choose the one that better serves the stated purpose. Still apply all rules — never fabricate or generalize beyond what's in the text.
+
+---
+
 ## RULES
 
 1. **Only extract anchors that are present in the text.** Do not invent, generalize, or infer from context outside this chunk.
@@ -77,6 +83,7 @@ _client: Optional[Anthropic] = None
 
 class AnchorRequest(BaseModel):
     text: str
+    achieve: str = ""
 
 
 class AnchorItem(BaseModel):
@@ -144,15 +151,17 @@ _TOOL = {
 }
 
 
-def extract_anchors(text: str) -> list[dict]:
+def extract_anchors(text: str, achieve: str = "") -> list[dict]:
     client = _get_client()
 
     document = text[:MAX_TEXT_CHARS]
     max_n = _anchor_limit(document)
 
+    goal_line = f"Writing goal: {achieve.strip()}\n" if achieve.strip() else ""
     user_content = (
-        f"Chunk size: ~{len(document.split())} words — return at most {max_n} anchors.\n\n"
-        f"Chunk:\n{document}"
+        f"Chunk size: ~{len(document.split())} words — return at most {max_n} anchors.\n"
+        f"{goal_line}"
+        f"\nChunk:\n{document}"
     )
 
     try:
@@ -179,4 +188,4 @@ def anchors_endpoint(req: AnchorRequest) -> AnchorResult:
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text is required")
 
-    return AnchorResult(anchors=[AnchorItem(**a) for a in extract_anchors(req.text)])
+    return AnchorResult(anchors=[AnchorItem(**a) for a in extract_anchors(req.text, req.achieve)])

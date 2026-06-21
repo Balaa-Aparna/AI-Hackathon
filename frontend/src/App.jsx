@@ -61,9 +61,9 @@ const STEP_HEADER = {
   },
   5: {
     eyebrow: "Step 5 · Reflect",
-    title: <>Your take. <em>Your intent.</em></>,
+    title: <>Your take. <em>Be honest.</em></>,
     lede:
-      "Two questions — answer honestly before you move on.",
+      "One question — share your genuine perspective before generating.",
   },
   6: {
     eyebrow: "Step 6 · Your Post",
@@ -308,7 +308,7 @@ export default function App() {
       const res = await fetch("/api/anchors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, achieve }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
@@ -455,6 +455,22 @@ export default function App() {
                 </div>
                 <div className="char-count">
                   {message.length}/{MAX_PROMPT}
+                </div>
+                <div className="reflect-field" style={{ marginTop: "1rem" }}>
+                  <label className="reflect-label">What do you want to achieve with this? <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional — shapes which anchors get extracted)</span></label>
+                  <div className="field-with-mic">
+                    <textarea
+                      placeholder="e.g. 'Write a post arguing that X is underrated' or 'Explain this to a non-technical audience'"
+                      value={achieve}
+                      onChange={(e) => setAchieve(e.target.value)}
+                      rows={2}
+                    />
+                    <MicButton
+                      className="mic-in-field"
+                      title="Dictate your goal"
+                      onResult={(t) => setAchieve((v) => appendSpoken(v, t))}
+                    />
+                  </div>
                 </div>
                 {linksError && <p className="error-text">Related links error: {linksError}</p>}
               </>
@@ -664,22 +680,6 @@ export default function App() {
               <>
                 <div className="reflect-fields">
                   <div className="reflect-field">
-                    <label className="reflect-label">What do you want to achieve with this?</label>
-                    <div className="field-with-mic">
-                      <textarea
-                        placeholder="Describe your goal or intention…"
-                        value={achieve}
-                        onChange={(e) => setAchieve(e.target.value)}
-                        rows={4}
-                      />
-                      <MicButton
-                        className="mic-in-field"
-                        title="Dictate your answer"
-                        onResult={(t) => setAchieve((v) => appendSpoken(v, t))}
-                      />
-                    </div>
-                  </div>
-                  <div className="reflect-field">
                     <label className="reflect-label">What do you genuinely think about it?</label>
                     <div className="field-with-mic">
                       <textarea
@@ -703,7 +703,7 @@ export default function App() {
                   <button onClick={() => goToStep(4)} className="ghost-btn">← Anchors</button>
                   <button
                     onClick={() => handleFinalize()}
-                    disabled={postLoading || (!achieve.trim() && !opinion.trim())}
+                    disabled={postLoading || !opinion.trim()}
                   >
                     {postLoading ? "Generating…" : "Finalize"}
                   </button>
