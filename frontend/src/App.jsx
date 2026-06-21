@@ -25,7 +25,7 @@ const STEP_HEADER = {
     eyebrow: "Step 2 · Sources",
     title: <>Four links <em>worth following.</em></>,
     lede:
-      "These are the server-rendered sources we found. Retrieve their content to read and break it into chunks.",
+      "These are the sources we found. Retrieve their content to read and break it into chunks.",
   },
   3: {
     eyebrow: "Step 3 · Explore the Focused Ideas, Edit the Focus",
@@ -102,6 +102,35 @@ function hostOf(url) {
   } catch {
     return url;
   }
+}
+
+function formatDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+// Reusable hover preview card for a source link (thumbnail + host + date).
+function LinkPreview({ link }) {
+  const date = formatDate(link.published);
+  const hide = (e) => { e.currentTarget.style.display = "none"; };
+  return (
+    <div className="link-preview" role="tooltip">
+      {link.image && (
+        <img className="link-preview-img" src={link.image} alt="" loading="lazy" onError={hide} />
+      )}
+      <div className="link-preview-body">
+        <span className="link-preview-title">{link.title || link.url}</span>
+        <span className="link-preview-meta">
+          {link.favicon && (
+            <img className="link-preview-favicon" src={link.favicon} alt="" onError={hide} />
+          )}
+          <span>{hostOf(link.url)}{date ? ` · ${date}` : ""}</span>
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -422,7 +451,7 @@ export default function App() {
                 {relatedLinks && relatedLinks.length > 0 ? (
                   <ul className="source-list">
                     {relatedLinks.map((link, i) => (
-                      <li key={i} className="source-card">
+                      <li key={i} className="source-card" tabIndex={0}>
                         <span className="source-index">{i + 1}</span>
                         <div className="source-body">
                           <a href={link.url} target="_blank" rel="noopener noreferrer" className="source-title">
@@ -430,6 +459,7 @@ export default function App() {
                           </a>
                           <span className="source-host">{hostOf(link.url)}</span>
                         </div>
+                        <LinkPreview link={link} />
                       </li>
                     ))}
                   </ul>

@@ -59,6 +59,11 @@ class RelatedLinksRequest(BaseModel):
 class LinkResult(BaseModel):
     title: str
     url: str
+    # Lightweight preview metadata from the search result (used for the
+    # on-hover link preview in the UI). All optional — may be empty strings.
+    image: str = ""
+    favicon: str = ""
+    published: str = ""
 
 
 class RelatedLinksResult(BaseModel):
@@ -133,7 +138,13 @@ def related_links(req: RelatedLinksRequest) -> RelatedLinksResult:
         raise HTTPException(status_code=502, detail=f"Browserbase search failed: {exc}")
 
     candidates = [
-        LinkResult(title=r.get("title") or r["url"], url=r["url"])
+        LinkResult(
+            title=r.get("title") or r["url"],
+            url=r["url"],
+            image=r.get("image") or "",
+            favicon=r.get("favicon") or "",
+            published=r.get("publishedDate") or "",
+        )
         for r in resp.json().get("results", [])
         if r.get("url")
     ]
