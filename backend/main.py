@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from anchors import router as anchors_router
 from related_links import router as related_links_router
+from fetch_markdown import router as fetch_markdown_router
 
 # Load backend/.env so API keys are available regardless of working directory.
 load_dotenv(Path(__file__).parent / ".env")
@@ -38,6 +39,9 @@ app.include_router(anchors_router)
 
 # Mount the Browserbase-powered related-links route (POST /api/related-links).
 app.include_router(related_links_router)
+
+# Mount the Browserbase-powered URL-to-markdown route (POST /api/fetch-markdown).
+app.include_router(fetch_markdown_router)
 
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)

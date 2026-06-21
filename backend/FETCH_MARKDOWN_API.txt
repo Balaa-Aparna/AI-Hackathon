@@ -1,0 +1,99 @@
+HOW TO USE THE FETCH-MARKDOWN API
+=================================
+
+Converts the content at a URL into Markdown (via Browserbase Fetch,
+format="markdown") and returns it as a downloadable .md file.
+
+File:  backend/fetch_markdown.py
+Auth:  uses BROWSERBASE_API_KEY from backend/.env (set on the server, not sent
+       by the client).
+
+
+ENDPOINT
+--------
+POST /api/fetch-markdown
+Content-Type: application/json
+
+
+REQUEST BODY
+------------
+{
+  "url": "https://example.com/article",   // required
+  "proxies": false                         // optional, default false.
+}                                          // set true for sites that block /
+                                           // return 403 (slower).
+
+- If the url has no scheme, "https://" is added automatically.
+
+
+SUCCESS RESPONSE (HTTP 200)
+---------------------------
+The body IS the markdown file (not JSON). Headers:
+
+  Content-Type:        text/markdown; charset=utf-8
+  Content-Disposition: attachment; filename="<host-path>.md"
+
+So res.ok === true  -> read the body as text/blob (the .md).
+   res.ok === false -> read JSON and use the `detail` field for the error.
+
+
+ERROR RESPONSES (JSON: { "detail": "<message>" })
+-------------------------------------------------
+422  Page had little/no readable content (likely needs JavaScript). Catch this
+     and tell the user, or fall back to a browser session.
+422  No markdown content returned for that URL.
+502  Browserbase fetch failed — includes Browserbase's own message, e.g.:
+       - response body exceeded the maximum allowed size of 5MB
+       - gateway timeout (page took > 60s)
+       - TLS certificate verification failed (SSL)
+503  BROWSERBASE_API_KEY is not set on the server.
+
+NOTE: Fetch does NOT run JavaScript, caps at 5 MB, times out at 60s, and cannot
+convert PDFs. Those cases come back as the errors above — use a full browser
+session for them.
+
+
+FRONTEND EXAMPLE (download the .md, catch errors)
+-------------------------------------------------
+async function downloadMarkdown(url) {
+  const res = await fetch("/api/fetch-markdown", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+
+  if (!res.ok) {
+    // Error path -> body is JSON with a `detail` message.
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || `HTTP ${res.status}`);
+  }
+
+  // Success path -> body is the markdown file. Trigger a browser download.
+  const blob = await res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match ? match[1] : "page.md";
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+// If you just want the markdown text instead of downloading:
+//   const markdown = await res.text();
+
+
+CURL EXAMPLE
+------------
+# Save the markdown to a file:
+curl -s -X POST http://localhost:8000/api/fetch-markdown \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}' \
+  -o example.md
+
+# See the error JSON for a failing page:
+curl -s -X POST http://localhost:8000/api/fetch-markdown \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://this-page-needs-js.example"}'
