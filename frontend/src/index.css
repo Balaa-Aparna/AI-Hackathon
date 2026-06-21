@@ -881,6 +881,63 @@ button:disabled {
   color: var(--terra);
 }
 
+/* ---------- anchor quote highlights in chunk ---------- */
+.chunk mark.anchor-mark {
+  background: hsl(var(--mark-hue, 18), 55%, 87%);
+  color: hsl(var(--mark-hue, 18), 40%, 28%);
+  border-radius: 3px;
+  padding: 0.06em 0.18em;
+  margin: 0 -0.05em;
+  font-style: inherit;
+  transition: opacity 0.18s ease, filter 0.18s ease, background 0.2s ease;
+}
+
+/* dim all marks when any anchor row in this chunk-row is hovered */
+.chunk-row:has(.anchor-edit-row:hover) .chunk mark.anchor-mark {
+  opacity: 0.18;
+  filter: saturate(0.3);
+}
+
+/* restore the hovered anchor's mark */
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="0"]:hover) .chunk mark.anchor-mark[data-ai="0"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="1"]:hover) .chunk mark.anchor-mark[data-ai="1"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="2"]:hover) .chunk mark.anchor-mark[data-ai="2"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="3"]:hover) .chunk mark.anchor-mark[data-ai="3"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="4"]:hover) .chunk mark.anchor-mark[data-ai="4"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="5"]:hover) .chunk mark.anchor-mark[data-ai="5"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="6"]:hover) .chunk mark.anchor-mark[data-ai="6"],
+.chunk-row:has(.anchor-edit-row[data-anchor-idx="7"]:hover) .chunk mark.anchor-mark[data-ai="7"] {
+  opacity: 1;
+  filter: none;
+  background: hsl(var(--mark-hue, 18), 65%, 78%);
+}
+
+/* reverse: hovering a mark dims the other anchor inputs */
+.chunk-row:has(mark.anchor-mark:hover) .anchor-edit-row {
+  opacity: 0.35;
+  transition: opacity 0.18s ease;
+}
+.chunk-row:has(mark.anchor-mark[data-ai="0"]:hover) .anchor-edit-row[data-anchor-idx="0"],
+.chunk-row:has(mark.anchor-mark[data-ai="1"]:hover) .anchor-edit-row[data-anchor-idx="1"],
+.chunk-row:has(mark.anchor-mark[data-ai="2"]:hover) .anchor-edit-row[data-anchor-idx="2"],
+.chunk-row:has(mark.anchor-mark[data-ai="3"]:hover) .anchor-edit-row[data-anchor-idx="3"],
+.chunk-row:has(mark.anchor-mark[data-ai="4"]:hover) .anchor-edit-row[data-anchor-idx="4"],
+.chunk-row:has(mark.anchor-mark[data-ai="5"]:hover) .anchor-edit-row[data-anchor-idx="5"],
+.chunk-row:has(mark.anchor-mark[data-ai="6"]:hover) .anchor-edit-row[data-anchor-idx="6"],
+.chunk-row:has(mark.anchor-mark[data-ai="7"]:hover) .anchor-edit-row[data-anchor-idx="7"] {
+  opacity: 1;
+}
+
+/* color dot on each anchor edit row */
+.anchor-color-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: hsl(var(--dot-hue, 18), 55%, 62%);
+  margin-right: 0.1rem;
+}
+
 /* ---------- step 4: anchor review ---------- */
 .anchor-summary {
   display: flex;
@@ -1332,4 +1389,49 @@ button:disabled {
 
 .post-article > *:last-child {
   margin-bottom: 0;
+}
+
+/* ---------- text-selection anchor popover ---------- */
+.selection-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.selection-popover {
+  position: absolute;
+  z-index: 100;
+  transform: translate(-50%, calc(-100% - 10px));
+  pointer-events: auto;
+}
+
+.selection-popover button {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fdf7ec;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(43, 39, 35, 0.35);
+  animation: popover-in 0.12s ease-out;
+}
+
+.selection-popover button:hover {
+  background: var(--terra);
+}
+
+.selection-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }

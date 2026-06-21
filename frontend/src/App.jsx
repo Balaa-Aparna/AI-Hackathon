@@ -5,6 +5,26 @@ import { MicButton, SpeakButton, appendSpoken, stripMarkdown } from "./voice.jsx
 
 const MAX_PROMPT = 200;
 
+const ANCHOR_HUES = [18, 38, 85, 200, 270, 330, 160, 50];
+
+function injectHighlights(md, anchors) {
+  if (!Array.isArray(anchors) || !anchors.length) return md;
+  let result = md;
+  anchors.forEach((anchor, i) => {
+    const quote = anchor?.quote;
+    if (!quote || !quote.trim()) return;
+    const hue = ANCHOR_HUES[i % ANCHOR_HUES.length];
+    const escaped = quote.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      result = result.replace(
+        new RegExp(escaped),
+        `<mark class="anchor-mark" data-ai="${i}" style="--mark-hue:${hue}">$&</mark>`
+      );
+    } catch {}
+  });
+  return result;
+}
+
 const STEPS = [
   { id: 1, name: "Anchor" },
   { id: 2, name: "Extract" },
@@ -41,9 +61,9 @@ const STEP_HEADER = {
   },
   5: {
     eyebrow: "Step 5 · Reflect",
-    title: <>Your take. <em>Your intent.</em></>,
+    title: <>Your take. <em>Be honest.</em></>,
     lede:
-      "Two questions — answer honestly before you move on.",
+      "One question — share your genuine perspective before generating.",
   },
   6: {
     eyebrow: "Step 6 · Your Post",
@@ -136,6 +156,7 @@ function LinkPreview({ link }) {
 export default function App() {
   const [step, setStep] = useState(1);
   const [modal, setModal] = useState(null); // null | "how" | "about"
+  const [selectionPopover, setSelectionPopover] = useState(null); // {text, key, top, left}
 
   // Step 1
   const [message, setMessage] = useState("");
@@ -206,7 +227,10 @@ export default function App() {
 
     const allAnchors = [];
     Object.values(anchoredChunks).forEach((anchors) => {
-      if (Array.isArray(anchors)) anchors.forEach((a) => { if (a) allAnchors.push(a); });
+      if (Array.isArray(anchors)) anchors.forEach((a) => {
+        const phrase = a?.phrase ?? a;
+        if (phrase) allAnchors.push(phrase);
+      });
     });
     const sources = (relatedLinks ?? []).map((l) => ({ title: l.title || "", url: l.url }));
 
@@ -313,7 +337,7 @@ export default function App() {
       const res = await fetch("/api/anchors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, achieve }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
@@ -327,7 +351,7 @@ export default function App() {
   function setAnchor(key, j, value) {
     setAnchoredChunks((prev) => {
       const list = [...(prev[key] || [])];
-      list[j] = value;
+      list[j] = { ...list[j], phrase: value };
       return { ...prev, [key]: list };
     });
   }
@@ -340,7 +364,27 @@ export default function App() {
   }
 
   function addAnchor(key) {
-    setAnchoredChunks((prev) => ({ ...prev, [key]: [...(prev[key] || []), ""] }));
+    setAnchoredChunks((prev) => ({ ...prev, [key]: [...(prev[key] || []), { phrase: "", quote: "" }] }));
+  }
+
+  function handleChunkMouseUp(key) {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) { setSelectionPopover(null); return; }
+    const text = sel.toString().trim();
+    if (!text) { setSelectionPopover(null); return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    setSelectionPopover({ text, key, top: rect.top + window.scrollY, left: rect.left + rect.width / 2 });
+  }
+
+  function addSelectionAsAnchor() {
+    if (!selectionPopover) return;
+    const { text, key } = selectionPopover;
+    setAnchoredChunks((prev) => {
+      const existing = Array.isArray(prev[key]) ? prev[key] : [];
+      return { ...prev, [key]: [...existing, { phrase: text, quote: text }] };
+    });
+    setSelectionPopover(null);
+    window.getSelection()?.removeAllRanges();
   }
 
   function deleteChunk(linkIdx, ci) {
@@ -441,6 +485,22 @@ export default function App() {
                 <div className="char-count">
                   {message.length}/{MAX_PROMPT}
                 </div>
+                <div className="reflect-field" style={{ marginTop: "1rem" }}>
+                  <label className="reflect-label">What do you want to achieve with this? <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional — shapes which anchors get extracted)</span></label>
+                  <div className="field-with-mic">
+                    <textarea
+                      placeholder="e.g. 'Write a post arguing that X is underrated' or 'Explain this to a non-technical audience'"
+                      value={achieve}
+                      onChange={(e) => setAchieve(e.target.value)}
+                      rows={2}
+                    />
+                    <MicButton
+                      className="mic-in-field"
+                      title="Dictate your goal"
+                      onResult={(t) => setAchieve((v) => appendSpoken(v, t))}
+                    />
+                  </div>
+                </div>
                 {linksError && <p className="error-text">Related links error: {linksError}</p>}
               </>
             )}
@@ -522,7 +582,7 @@ export default function App() {
                         const hasAnchors = key in anchoredChunks;
                         return (
                           <div key={ci} className="chunk-row">
-                            <div className="chunk">
+                            <div className="chunk" onMouseUp={() => handleChunkMouseUp(key)}>
                               <button
                                 type="button"
                                 className="chunk-delete"
@@ -534,7 +594,9 @@ export default function App() {
                               </button>
                               <div
                                 dangerouslySetInnerHTML={{
-                                  __html: hasAnchors && anchors ? parseWithAnchors(text) : marked.parse(text, { renderer: noImgRenderer }),
+                                  __html: hasAnchors && Array.isArray(anchors)
+                                    ? parseWithAnchors(injectHighlights(text, anchors))
+                                    : marked.parse(text, { renderer: noImgRenderer }),
                                 }}
                               />
                             </div>
@@ -554,29 +616,28 @@ export default function App() {
                                 <span className="anchor-label">Extracting anchors…</span>
                               ) : (
                                 <div className="anchor-edit-list">
-                                  {anchors.map((a, j) => (
-                                    <div key={j} className="anchor-edit-row">
-                                      <input
-                                        type="text"
-                                        value={a}
-                                        placeholder="Anchor phrase"
-                                        onChange={(e) => setAnchor(key, j, e.target.value)}
-                                      />
-                                      <MicButton
-                                        className="mic-anchor"
-                                        title="Dictate this anchor"
-                                        onResult={(t) => setAnchor(key, j, appendSpoken(a, t))}
-                                      />
-                                      <button
-                                        type="button"
-                                        className="anchor-remove"
-                                        aria-label="Remove anchor"
-                                        onClick={() => removeAnchor(key, j)}
-                                      >
-                                        ×
-                                      </button>
-                                    </div>
-                                  ))}
+                                  {anchors.map((a, j) => {
+                                    const hue = ANCHOR_HUES[j % ANCHOR_HUES.length];
+                                    return (
+                                      <div key={j} className="anchor-edit-row" data-anchor-idx={j}>
+                                        <span className="anchor-color-dot" style={{ '--dot-hue': hue }} />
+                                        <input
+                                          type="text"
+                                          value={a?.phrase ?? a}
+                                          placeholder="Anchor phrase"
+                                          onChange={(e) => setAnchor(key, j, e.target.value)}
+                                        />
+                                        <button
+                                          type="button"
+                                          className="anchor-remove"
+                                          aria-label="Remove anchor"
+                                          onClick={() => removeAnchor(key, j)}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
                                   <button
                                     type="button"
                                     className="ghost-btn anchor-add"
@@ -627,7 +688,7 @@ export default function App() {
                             </div>
                             <div className="anchor-tag-cloud">
                               {anchors.map((a, i) => (
-                                <span key={i} className="anchor-tag">{a}</span>
+                                <span key={i} className="anchor-tag">{a?.phrase ?? a}</span>
                               ))}
                             </div>
                           </div>
@@ -648,22 +709,6 @@ export default function App() {
             {step === 5 && (
               <>
                 <div className="reflect-fields">
-                  <div className="reflect-field">
-                    <label className="reflect-label">What do you want to achieve with this?</label>
-                    <div className="field-with-mic">
-                      <textarea
-                        placeholder="Describe your goal or intention…"
-                        value={achieve}
-                        onChange={(e) => setAchieve(e.target.value)}
-                        rows={4}
-                      />
-                      <MicButton
-                        className="mic-in-field"
-                        title="Dictate your answer"
-                        onResult={(t) => setAchieve((v) => appendSpoken(v, t))}
-                      />
-                    </div>
-                  </div>
                   <div className="reflect-field">
                     <label className="reflect-label">What do you genuinely think about it?</label>
                     <div className="field-with-mic">
@@ -688,7 +733,7 @@ export default function App() {
                   <button onClick={() => goToStep(4)} className="ghost-btn">← Anchors</button>
                   <button
                     onClick={() => handleFinalize()}
-                    disabled={postLoading || (!achieve.trim() && !opinion.trim())}
+                    disabled={postLoading || !opinion.trim()}
                   >
                     {postLoading ? "Generating…" : "Finalize"}
                   </button>
@@ -819,6 +864,18 @@ export default function App() {
             )}
           </div>
         </div>
+      )}
+
+      {selectionPopover && (
+        <>
+          <div className="selection-backdrop" onClick={() => setSelectionPopover(null)} />
+          <div
+            className="selection-popover"
+            style={{ top: selectionPopover.top, left: selectionPopover.left }}
+          >
+            <button onClick={addSelectionAsAnchor}>+ Add as anchor</button>
+          </div>
+        </>
       )}
     </>
   );
