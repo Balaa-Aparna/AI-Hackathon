@@ -7,6 +7,7 @@ const STEPS = [
   { id: 1, name: "Anchor" },
   { id: 2, name: "Extract" },
   { id: 3, name: "Explore" },
+  { id: 4, name: "Compose" },
 ];
 
 const STEP_HEADER = {
@@ -27,6 +28,12 @@ const STEP_HEADER = {
     title: <>Read, chunk, <em>anchor.</em></>,
     lede:
       "Switch between sources, edit any chunk in its side panel, and drop anchors on the ideas that hold it together.",
+  },
+  4: {
+    eyebrow: "Step 4 · Compose",
+    title: <>Your voice. <em>Real sources.</em></>,
+    lede:
+      "Tell the agent what you want to achieve and what you genuinely think. It will pull the most relevant anchors and write a post grounded in real information.",
   },
 };
 
@@ -86,12 +93,23 @@ export default function App() {
   // anchors (editable): key `${linkIdx}:${chunkIdx}` -> string[] | null (loading)
   const [anchoredChunks, setAnchoredChunks] = useState({});
 
+  // Step 4
+  const [goal, setGoal] = useState("");
+  const [opinion, setOpinion] = useState("");
+  const [postMode, setPostMode] = useState("auto");
+  const [postResult, setPostResult] = useState(null);
+  const [postLoading, setPostLoading] = useState(false);
+  const [postError, setPostError] = useState("");
+  const [copied, setCopied] = useState(false);
+
   const canStep2 = relatedLinks !== null;
   const canStep3 = relatedLinks !== null && relatedLinks.length > 0;
+  const canStep4 = Object.values(anchoredChunks).some((a) => Array.isArray(a) && a.length > 0);
 
   function goToStep(id) {
     if (id === 2 && !canStep2) return;
     if (id === 3 && !canStep3) return;
+    if (id === 4 && !canStep4) return;
     setStep(id);
   }
 
@@ -200,6 +218,35 @@ export default function App() {
     setAnchoredChunks((prev) => ({ ...prev, [key]: [...(prev[key] || []), ""] }));
   }
 
+  async function handleGeneratePost() {
+    setPostError("");
+    setPostResult(null);
+    setPostLoading(true);
+    setCopied(false);
+    try {
+      const res = await fetch("/api/generate-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goal: goal.trim(), opinion: opinion.trim(), mode: postMode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+      setPostResult(data);
+    } catch (err) {
+      setPostError(err.message);
+    } finally {
+      setPostLoading(false);
+    }
+  }
+
+  function copyPost() {
+    if (!postResult?.post) return;
+    navigator.clipboard.writeText(postResult.post).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   const header = STEP_HEADER[step];
 
   return (
@@ -224,7 +271,10 @@ export default function App() {
 
       <ol className="steps">
         {STEPS.map((s) => {
-          const locked = (s.id === 2 && !canStep2) || (s.id === 3 && !canStep3);
+          const locked =
+            (s.id === 2 && !canStep2) ||
+            (s.id === 3 && !canStep3) ||
+            (s.id === 4 && !canStep4);
           return (
             <li
               key={s.id}
@@ -413,7 +463,95 @@ export default function App() {
 
               <div className="controls">
                 <button onClick={() => goToStep(2)} className="ghost-btn">← Sources</button>
+                {canStep4 && (
+                  <button onClick={() => goToStep(4)}>Compose Post →</button>
+                )}
               </div>
+            </>
+          )}
+
+          {/* ---------- STEP 4: compose ---------- */}
+          {step === 4 && (
+            <>
+              <div className="compose-form">
+                <label className="anchor-label" htmlFor="goal-input">
+                  What do you want to achieve with this?
+                </label>
+                <textarea
+                  id="goal-input"
+                  placeholder="e.g. Spark a conversation about AI and education policy"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                  rows={3}
+                />
+
+                <label className="anchor-label" htmlFor="opinion-input">
+                  What do you genuinely think about it?
+                </label>
+                <textarea
+                  id="opinion-input"
+                  placeholder="e.g. I think the hype is outrunning the evidence, and teachers are being left behind"
+                  value={opinion}
+                  onChange={(e) => setOpinion(e.target.value)}
+                  rows={3}
+                />
+
+                <div className="mode-row">
+                  <span className="anchor-label">Anchor pattern:</span>
+                  {["auto", "theme", "tension", "outlier"].map((m) => (
+                    <button
+                      key={m}
+                      className={`mode-btn${postMode === m ? " active" : ""}`}
+                      onClick={() => setPostMode(m)}
+                      type="button"
+                    >
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="controls">
+                <button onClick={() => goToStep(3)} className="ghost-btn">← Explore</button>
+                <button
+                  onClick={handleGeneratePost}
+                  disabled={postLoading || !goal.trim() || !opinion.trim()}
+                >
+                  {postLoading ? "Generating…" : "Generate Post"}
+                </button>
+              </div>
+
+              {postError && <p className="error-text">{postError}</p>}
+
+              {postResult && (
+                <div className="post-result">
+                  <div className="post-meta">
+                    <span className="anchor-label">Pattern used:</span>{" "}
+                    <span className="anchor-tag">{postResult.mode_used}</span>
+                  </div>
+
+                  <div className="post-body">
+                    {postResult.post.split("\n\n").map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                  </div>
+
+                  <button className="ghost-btn copy-btn" onClick={copyPost}>
+                    {copied ? "Copied!" : "Copy post"}
+                  </button>
+
+                  {postResult.anchors_used?.length > 0 && (
+                    <details className="anchors-used">
+                      <summary className="anchor-label">Sources used ({postResult.anchors_used.length} anchors)</summary>
+                      <ul>
+                        {postResult.anchors_used.map((a, i) => (
+                          <li key={i} className="muted">{a}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              )}
             </>
           )}
         </section>

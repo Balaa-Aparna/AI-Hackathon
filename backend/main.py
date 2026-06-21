@@ -13,6 +13,10 @@ from pydantic import BaseModel
 from anchors import router as anchors_router
 from related_links import router as related_links_router
 from fetch_markdown import router as fetch_markdown_router
+from generate_post import router as generate_post_router
+import memory
+import embeddings as emb
+import vector_store
 
 # Load backend/.env so API keys are available regardless of working directory.
 load_dotenv(Path(__file__).parent / ".env")
@@ -43,11 +47,11 @@ app.include_router(related_links_router)
 # Mount the Browserbase-powered URL-to-markdown route (POST /api/fetch-markdown).
 app.include_router(fetch_markdown_router)
 
+# Mount the post-generation route (POST /api/generate-post).
+app.include_router(generate_post_router)
+
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
-
-# In-memory store of uploaded docs: {id: {"name": str, "text": str}}
-DOCUMENTS: dict[str, dict] = {}
 
 
 class PromptRequest(BaseModel):
@@ -61,6 +65,11 @@ class PromptResponse(BaseModel):
 
 class FetchUrlRequest(BaseModel):
     url: str
+
+
+class SearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
 
 
 def _extract_text(html: str) -> tuple[str, str]:
@@ -91,7 +100,7 @@ def health():
 
 @app.get("/api/documents")
 def list_documents():
-    return [{"id": doc_id, "name": doc["name"]} for doc_id, doc in DOCUMENTS.items()]
+    return memory.list_documents()
 
 
 @app.post("/api/upload")
@@ -100,18 +109,17 @@ async def upload(file: UploadFile = File(...)):
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        # Non-text files are stored but not decoded in this skeleton.
         text = ""
 
-    doc_id = str(len(DOCUMENTS) + 1)
-    path = UPLOAD_DIR / f"{doc_id}_{file.filename}"
+    path = UPLOAD_DIR / file.filename
     path.write_bytes(raw)
-    DOCUMENTS[doc_id] = {
-        "name": file.filename,
-        "text": text,
-        "path": str(path),
-        "content_type": file.content_type or "application/octet-stream",
-    }
+
+    doc_id = memory.store_document(
+        name=file.filename,
+        text=text,
+        path=str(path),
+        content_type=file.content_type or "application/octet-stream",
+    )
     return {"id": doc_id, "name": file.filename}
 
 
@@ -136,20 +144,17 @@ def fetch_url(req: FetchUrlRequest):
         raise HTTPException(status_code=422, detail="No readable text found at that URL.")
 
     name = title or url
-    doc_id = str(len(DOCUMENTS) + 1)
-    DOCUMENTS[doc_id] = {
-        "name": name,
-        "text": text,
-        "path": "",
-        "content_type": "text/plain",
-        "source_url": url,
-    }
+    doc_id = memory.store_document(
+        name=name,
+        text=text,
+        source_url=url,
+    )
     return {"id": doc_id, "name": name, "text": text, "url": url}
 
 
 @app.get("/api/documents/{doc_id}")
 def get_document(doc_id: str):
-    doc = DOCUMENTS.get(doc_id)
+    doc = memory.get_document(doc_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return {
@@ -163,15 +168,15 @@ def get_document(doc_id: str):
 
 @app.get("/api/documents/{doc_id}/raw")
 def get_document_raw(doc_id: str):
-    doc = DOCUMENTS.get(doc_id)
+    doc = memory.get_document(doc_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.get("path"):
+        raise HTTPException(status_code=404, detail="No raw file for this document")
     return FileResponse(
         doc["path"],
         media_type=doc["content_type"],
         filename=doc["name"],
-        # "inline" lets the browser render the file in the preview <iframe>;
-        # the default "attachment" would force a download instead.
         content_disposition_type="inline",
     )
 
@@ -180,7 +185,7 @@ def get_document_raw(doc_id: str):
 def prompt(req: PromptRequest):
     context = ""
     if req.document_id:
-        doc = DOCUMENTS.get(req.document_id)
+        doc = memory.get_document(req.document_id)
         if doc is None:
             raise HTTPException(status_code=404, detail="Document not found")
         context = doc["text"]
@@ -201,3 +206,47 @@ def prompt(req: PromptRequest):
 
     answer = "".join(block.text for block in message.content if block.type == "text")
     return PromptResponse(answer=answer)
+
+
+@app.post("/api/search")
+def search(req: SearchRequest):
+    """Semantic search over indexed anchor embeddings, with Claude-synthesized answer."""
+    if not req.query.strip():
+        raise HTTPException(status_code=400, detail="query is required")
+
+    query_embeddings = emb.embed([req.query])
+    if query_embeddings is None:
+        raise HTTPException(
+            status_code=503,
+            detail="VOYAGE_API_KEY not configured. Set it in .env to enable vector search.",
+        )
+
+    results = vector_store.search(query_embeddings[0], top_k=req.top_k)
+    if not results:
+        return {
+            "results": [],
+            "answer": "No indexed content yet. Extract anchors from content first.",
+        }
+
+    context = "\n\n---\n\n".join(
+        f"[Anchor: {r['anchor']}]\n{r['chunk']}" for r in results
+    )
+
+    try:
+        message = client.messages.create(
+            model=MODEL,
+            max_tokens=1024,
+            system=(
+                "You are a research assistant. Answer the question using only the context "
+                "chunks provided. Be concise and cite which anchor the information came from."
+            ),
+            messages=[{
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion: {req.query}",
+            }],
+        )
+        answer = "".join(block.text for block in message.content if block.type == "text")
+    except anthropic.APIError as exc:
+        answer = f"Could not synthesize answer: {exc}"
+
+    return {"results": results, "answer": answer}

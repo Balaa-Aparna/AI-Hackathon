@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+import memory
+
 # Browserbase Fetch endpoint. With format="markdown" Browserbase converts the
 # fetched page into markdown and returns it in the response `content` field.
 # Docs: POST /v1/fetch with the x-bb-api-key header.
@@ -54,6 +56,16 @@ def fetch_markdown(req: FetchMarkdownRequest) -> Response:
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
+    # Return cached markdown if this URL was fetched recently (saves Browserbase credits).
+    cached = memory.get_cached_url(url)
+    if cached:
+        filename = _filename_for(url)
+        return Response(
+            content=cached,
+            media_type="text/markdown; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     try:
         resp = requests.post(
             FETCH_URL,
@@ -96,6 +108,8 @@ def fetch_markdown(req: FetchMarkdownRequest) -> Response:
                 "It likely requires JavaScript to render; try a full browser session."
             ),
         )
+
+    memory.cache_url(url, markdown)
 
     filename = _filename_for(url)
     return Response(
