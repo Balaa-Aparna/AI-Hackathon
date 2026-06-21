@@ -7,7 +7,7 @@ from anthropic import Anthropic
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-MODEL = "claude-opus-4-8"
+MODEL = "claude-haiku-4-5"
 MAX_ANCHORS = 10
 MAX_TEXT_CHARS = 50_000
 
@@ -27,7 +27,7 @@ An anchor is the structural center the content orbits. It is not the topic or ti
 - It explains why the text holds together
 - Removing it collapses coherence
 - an anchor is not a heading, anchors are the sentences that drive the heading, without it , without which the author cannot explain his view
-Anchors must be ≤ 15 words.
+Anchors must be ≤ 10 words.
 
 ---
 
@@ -116,7 +116,7 @@ def extract_anchors(text: str, topic: str = "") -> list[str]:
     try:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=512,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_content}],
             tools=[_TOOL],

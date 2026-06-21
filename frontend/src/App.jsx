@@ -1,10 +1,10 @@
 import { useState, useRef } from "react";
 import { marked } from "marked";
+import { fetchUrl } from "./api";
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
 }
-
 
 function parseWithAnchors(md) {
   const renderer = new marked.Renderer();
@@ -22,6 +22,8 @@ export default function App() {
   const [rendered, setRendered] = useState(null);
   const [error, setError] = useState("");
   const [anchoredChunks, setAnchoredChunks] = useState(new Map());
+  const [url, setUrl] = useState("");
+  const [loadingUrl, setLoadingUrl] = useState(false);
   const fileInputRef = useRef(null);
 
   function chunkBySubHeadings(md) {
@@ -64,6 +66,26 @@ export default function App() {
     reader.readAsText(file);
   }
 
+  async function handleUrl() {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+
+    setError("");
+    setLoadingUrl(true);
+    try {
+      const doc = await fetchUrl(trimmed);
+      // Treat the fetched page text as the source content.
+      setRawMarkdown(doc.text);
+      setSections(chunkBySubHeadings(doc.text));
+      setRendered(null);
+    } catch (err) {
+      setError(err.message);
+      setRendered(null);
+    } finally {
+      setLoadingUrl(false);
+    }
+  }
+
   function render() {
     if (!rawMarkdown) return;
 
@@ -85,19 +107,37 @@ export default function App() {
         onChange={handleFile}
       />
 
+      <p className="muted" style={{ textAlign: "left", margin: "0.5rem 0" }}>
+        — or —
+      </p>
+
+      <div className="controls">
+        <input
+          type="text"
+          placeholder="Paste a link (https://…)"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleUrl()}
+          style={{ flex: 1, minWidth: "240px" }}
+        />
+        <button onClick={handleUrl} disabled={loadingUrl}>
+          {loadingUrl ? "Fetching…" : "Fetch from URL"}
+        </button>
+      </div>
+
       <div className="controls">
         <select value={mode} onChange={(e) => setMode(e.target.value)}>
           <option value="full">Full Article</option>
           <option value="auto">Auto Chunk (Sub-headings)</option>
         </select>
-        <button onClick={render}>Render</button>
+        <button onClick={render}>Retrieve the Content</button>
       </div>
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 
       <div className="viewer">
         {rendered === null ? (
-          <p className="muted">Upload a Markdown file...</p>
+          <p className="muted">Upload a file...</p>
         ) : (
           rendered.map((sec, i) => {
             const hasAnchors = anchoredChunks.has(i);
