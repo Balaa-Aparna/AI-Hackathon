@@ -7,10 +7,6 @@ from anthropic import Anthropic
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-import memory
-import embeddings as emb
-import vector_store
-
 MODEL = "claude-haiku-4-5"
 MAX_ANCHORS = 10
 MAX_TEXT_CHARS = 50_000
@@ -19,34 +15,34 @@ MAX_TEXT_CHARS = 50_000
 SYSTEM_PROMPT = """
 ## ROLE
 
-You are an anchor extractor. Given a chunk of text, you identify the exact sentences that do the most argumentative or explanatory work — the anchor sentences without which the author cannot make their point.
+You are an anchor extractor. Given a piece of text, you identify the anchor(s) — the irreducible organizing forces the text is built around.
 
 ---
 
 ## WHAT AN ANCHOR IS
 
-An anchor is a verbatim sentence from the text that:
+An anchor is the structural center the content orbits. It is not the topic or title.
 
-- Makes the core claim, assertion, or insight the section is built around
-- Cannot be removed without collapsing the author's argument
-- Is not a transitional, introductory, or summary sentence
-- Is not a heading or label
+- It is a **force**, not a subject label
+- It explains why the text holds together
+- Removing it collapses coherence
+- an anchor is not a heading, anchors are the sentences that drive the heading, without it , without which the author cannot explain his view
+Anchors must be ≤ 10 words.
 
 ---
 
 ## RULES
 
-1. Copy anchor sentences verbatim from the text — do not paraphrase or shorten
-2. Only return sentences that carry the argument forward
-3. Do not return headings, bullet labels, or meta-commentary
-4. If an anchor sentence is only meaningful with context, include that context sentence too
-5. Return 3–7 anchor sentences per chunk
-
+1. Do not force anchors that are not present
+2. Do not return category-level labels
+3. Anchors must survive a "removal test"
+4. Prefer structural forces over topics
+5. anchors are never the heading
 ---
 
 ## OUTPUT
 
-Return 3–7 verbatim anchor sentences from the text.
+Return 5–10 anchors as short phrases.
 """
 
 
@@ -92,14 +88,14 @@ def _clean(anchors: list[str]) -> list[str]:
 
 _TOOL = {
     "name": "extract_anchors",
-    "description": "Return the anchor sentences extracted from the document.",
+    "description": "Return the anchors extracted from the document.",
     "input_schema": {
         "type": "object",
         "properties": {
             "anchors": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "3-7 verbatim anchor sentences copied from the document",
+                "description": "5-10 anchor phrases extracted from the document",
             }
         },
         "required": ["anchors"],
@@ -120,7 +116,7 @@ def extract_anchors(text: str, topic: str = "") -> list[str]:
     try:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1024,
+            max_tokens=512,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_content}],
             tools=[_TOOL],
@@ -141,21 +137,4 @@ def anchors_endpoint(req: AnchorRequest) -> AnchorResult:
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text is required")
 
-    # Return cached result if this exact chunk has been seen before.
-    cached = memory.get_cached_anchors(req.text)
-    if cached is not None:
-        return AnchorResult(anchors=cached)
-
-    anchors = extract_anchors(req.text, req.topic)
-
-    # Persist result so the same chunk doesn't re-invoke Claude next session.
-    memory.cache_anchors(req.text, anchors)
-
-    # Embed anchors and index them for vector search (fire-and-forget; skip if
-    # Voyage key is absent so the endpoint still works without it).
-    anchor_embeddings = emb.embed(anchors)
-    if anchor_embeddings is not None:
-        for anchor_text, embedding in zip(anchors, anchor_embeddings):
-            vector_store.store(anchor_text, req.text, embedding)
-
-    return AnchorResult(anchors=anchors)
+    return AnchorResult(anchors=extract_anchors(req.text, req.topic))

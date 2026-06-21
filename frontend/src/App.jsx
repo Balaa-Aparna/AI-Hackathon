@@ -276,35 +276,6 @@ export default function App() {
     setAnchoredChunks((prev) => ({ ...prev, [key]: [...(prev[key] || []), ""] }));
   }
 
-  async function handleGeneratePost() {
-    setPostError("");
-    setPostResult(null);
-    setPostLoading(true);
-    setCopied(false);
-    try {
-      const res = await fetch("/api/generate-post", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal: goal.trim(), opinion: opinion.trim(), mode: postMode }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
-      setPostResult(data);
-    } catch (err) {
-      setPostError(err.message);
-    } finally {
-      setPostLoading(false);
-    }
-  }
-
-  function copyPost() {
-    if (!postResult?.post) return;
-    navigator.clipboard.writeText(postResult.post).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
   const header = STEP_HEADER[step];
 
   return (

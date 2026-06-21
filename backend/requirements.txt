@@ -6,6 +6,3 @@ python-dotenv
 requests
 beautifulsoup4
 eval_type_backport
-redis
-sentence-transformers
-numpy
