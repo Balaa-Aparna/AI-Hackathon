@@ -118,6 +118,18 @@ body {
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+
+.step:hover:not(.locked) {
+  color: var(--ink);
+}
+
+.step.locked {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .step::after {
@@ -156,7 +168,7 @@ body {
 
 /* ---------- main panel ---------- */
 .container {
-  max-width: 760px;
+  max-width: 900px;
   margin: 1.25rem auto 4rem;
   padding: 0 1.25rem;
 }
@@ -305,6 +317,231 @@ button:disabled {
 
 .muted {
   color: var(--muted);
+}
+
+.error-text {
+  color: #b3261e;
+  margin: 0.5rem 0 0;
+}
+
+.char-count {
+  margin: -0.5rem 0 1rem;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ghost-btn {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+
+.ghost-btn:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* ---------- step 2: source cards ---------- */
+.source-list {
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.source-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  transition: border-color 0.15s, transform 0.05s;
+}
+
+.source-card:hover {
+  border-color: var(--terra);
+}
+
+.source-index {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--terra-soft);
+  color: var(--terra-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.source-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.source-title {
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.source-title:hover {
+  color: var(--terra-dark);
+  text-decoration: underline;
+}
+
+.source-host {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ---------- step 3: source tabs ---------- */
+.link-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.link-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-tab:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.link-tab.active {
+  background: var(--terra);
+  border-color: var(--terra);
+  color: #fdf7ec;
+}
+
+.link-tab-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.12);
+  font-size: 0.72rem;
+}
+
+/* ---------- step 3: chunk + side-panel editor ---------- */
+.chunk-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 0.7fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.chunk-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: sticky;
+  top: 1rem;
+}
+
+.chunk-editor textarea {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.anchor-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.anchor-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.anchor-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.anchor-edit-row input {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  border: 1px solid #e7c6b6;
+  background: var(--terra-soft);
+  color: var(--terra-dark);
+}
+
+.anchor-edit-row input:focus {
+  outline: none;
+  border-color: var(--terra);
+  box-shadow: 0 0 0 3px var(--terra-soft);
+  background: var(--surface);
+}
+
+.anchor-remove {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.anchor-remove:hover {
+  background: var(--surface);
+  color: #b3261e;
+  border-color: #e0b4ab;
+}
+
+.anchor-add {
+  align-self: flex-start;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  border-radius: 999px;
+}
+
+@media (max-width: 720px) {
+  .chunk-row {
+    grid-template-columns: 1fr;
+  }
+
+  .chunk-editor {
+    position: static;
+  }
 }
 
 /* ---------- related links ---------- */
