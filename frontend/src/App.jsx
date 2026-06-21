@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { marked } from "marked";
+import { flushSync } from "react-dom";
 
 const MAX_PROMPT = 200;
 
@@ -97,6 +98,7 @@ function hostOf(url) {
 
 export default function App() {
   const [step, setStep] = useState(1);
+  const [modal, setModal] = useState(null); // null | "how" | "about"
 
   // Step 1
   const [message, setMessage] = useState("");
@@ -127,13 +129,34 @@ export default function App() {
   const canStep5 = canStep4;
   const canStep6 = !!generatedPost;
 
+  // Credit line for the final post: author names when available, else the
+  // short-form source host (e.g. "journals.plos.org"). Deduplicated.
+  const credit = relatedLinks?.length
+    ? "credit: " +
+      [...new Set(relatedLinks.map((l) => l.author || hostOf(l.url)).filter(Boolean))].join(", ")
+    : "";
+
+  // Cross-fade between step views via the View Transitions API. Falls back to an
+  // instant swap where unsupported or when the user prefers reduced motion.
+  function changeStep(next) {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduce && typeof document !== "undefined" && document.startViewTransition) {
+      document.startViewTransition(() => flushSync(() => setStep(next)));
+    } else {
+      setStep(next);
+    }
+  }
+
   function goToStep(id) {
     if (id === 2 && !canStep2) return;
     if (id === 3 && !canStep3) return;
     if (id === 4 && !canStep4) return;
     if (id === 5 && !canStep5) return;
     if (id === 6 && !canStep6) return;
-    setStep(id);
+    changeStep(id);
   }
 
   async function handleFinalize() {
@@ -156,7 +179,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
       setGeneratedPost(data.post);
-      setStep(6);
+      changeStep(6);
     } catch (err) {
       setPostError(err.message);
     } finally {
@@ -165,7 +188,8 @@ export default function App() {
   }
 
   function handleCopy() {
-    navigator.clipboard.writeText(generatedPost).then(() => {
+    const text = credit ? `${generatedPost}\n\n${credit}` : generatedPost;
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -189,7 +213,7 @@ export default function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
       setRelatedLinks(data.results ?? []);
-      setStep(2);
+      changeStep(2);
     } catch (err) {
       setLinksError(err.message);
     } finally {
@@ -292,9 +316,8 @@ export default function App() {
           <span className="brand-name">AnchorPoint</span>
         </div>
         <nav className="nav">
-          <a href="#">How it works</a>
-          <a href="#">Examples</a>
-          <a href="#">About</a>
+          <button type="button" className="nav-link" onClick={() => setModal("how")}>How it works</button>
+          <button type="button" className="nav-link" onClick={() => setModal("about")}>About</button>
         </nav>
       </header>
 
@@ -323,6 +346,7 @@ export default function App() {
 
       <main className="container">
         <section className="panel">
+          <div className="step-view">
           <p className="eyebrow">{header.eyebrow}</p>
           <h1 className="hero">{header.title}</h1>
           <p className="lede">{header.lede}</p>
@@ -386,18 +410,24 @@ export default function App() {
           {/* ---------- STEP 3: explore ---------- */}
           {step === 3 && relatedLinks && (
             <>
-              <div className="link-tabs">
-                {relatedLinks.map((link, i) => (
-                  <button
-                    key={i}
-                    className={`link-tab${activeLink === i ? " active" : ""}`}
-                    onClick={() => setActiveLink(i)}
-                    title={link.title || link.url}
-                  >
-                    <span className="link-tab-num">{i + 1}</span>
-                    {hostOf(link.url)}
-                  </button>
-                ))}
+              <div className="link-tabs-row">
+                <div className="link-tabs">
+                  {relatedLinks.map((link, i) => (
+                    <button
+                      key={i}
+                      className={`link-tab${activeLink === i ? " active" : ""}`}
+                      onClick={() => setActiveLink(i)}
+                      title={link.title || link.url}
+                    >
+                      <span className="link-tab-num">{i + 1}</span>
+                      {hostOf(link.url)}
+                    </button>
+                  ))}
+                </div>
+                <div className="link-tabs-actions">
+                  <button onClick={() => goToStep(2)} className="ghost-btn">← Sources</button>
+                  <button onClick={() => goToStep(4)}>Review Anchors →</button>
+                </div>
               </div>
 
               {(() => {
@@ -475,11 +505,6 @@ export default function App() {
                   </div>
                 );
               })()}
-
-              <div className="controls">
-                <button onClick={() => goToStep(2)} className="ghost-btn">← Sources</button>
-                <button onClick={() => goToStep(4)}>Review Anchors →</button>
-              </div>
             </>
           )}
 
@@ -574,6 +599,7 @@ export default function App() {
             <>
               <div className="post-card">
                 <p className="post-text">{generatedPost}</p>
+                {credit && <p className="post-credit">{credit}</p>}
                 <div className="post-footer">
                   <span className="post-wordcount">
                     {generatedPost.trim().split(/\s+/).filter(Boolean).length} words
@@ -596,8 +622,52 @@ export default function App() {
               </div>
             </>
           )}
+          </div>
         </section>
       </main>
+
+      <footer className="site-footer">
+        Powered by Browserbase APIs · Browserbase CLI · Claude Code · Claude API
+      </footer>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" aria-label="Close" onClick={() => setModal(null)}>×</button>
+
+            {modal === "how" && (
+              <>
+                <p className="eyebrow">How it works</p>
+                <h2 className="modal-title">From a question to a credited post.</h2>
+                <ol className="modal-steps">
+                  <li><strong>Anchor</strong> — Describe what you're researching. AnchorPoint searches the web and brings back the sources worth following.</li>
+                  <li><strong>Sources</strong> — Review the four server-rendered links we found.</li>
+                  <li><strong>Explore</strong> — Each source is converted to clean Markdown and split into chunks. Drop <em>anchors</em> on the load-bearing ideas, and edit them inline.</li>
+                  <li><strong>Review</strong> — See every anchor you marked across all sources, grouped by source.</li>
+                  <li><strong>Reflect</strong> — Answer two honest questions: what you want to achieve, and what you genuinely think.</li>
+                  <li><strong>Post</strong> — Your research, anchors, and take are distilled into one shareable post — with credit to the sources.</li>
+                </ol>
+              </>
+            )}
+
+            {modal === "about" && (
+              <>
+                <p className="eyebrow">About</p>
+                <h2 className="modal-title">Read deeper. Explore further.</h2>
+                <p className="modal-body">
+                  AnchorPoint turns scattered reading into an original, credited point of view. Instead of
+                  skimming, you pinpoint the <em>anchors</em> — the structural ideas a text is actually built
+                  around — and turn them into a post that's grounded in real sources, not hallucinated.
+                </p>
+                <p className="modal-body">
+                  Built with <strong>Browserbase</strong> (web search &amp; page-to-Markdown fetch) and
+                  <strong> Claude</strong> (anchor extraction &amp; writing).
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -86,14 +86,144 @@ body {
   gap: 1.75rem;
 }
 
-.nav a {
+.nav a,
+.nav-link {
   color: var(--ink-soft);
   text-decoration: none;
   font-size: 0.95rem;
 }
 
-.nav a:hover {
+/* nav buttons styled as plain links (override the global button style) */
+.nav-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.nav a:hover,
+.nav-link:hover {
   color: var(--terra);
+  background: none;
+}
+
+/* ---------- step view cross-fade (View Transitions API) ---------- */
+.step-view {
+  view-transition-name: step-view;
+}
+
+/* The old and new snapshots overlap and cross-fade. */
+::view-transition-old(step-view),
+::view-transition-new(step-view) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* ---------- footer ---------- */
+.site-footer {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- modal / popup ---------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(43, 39, 35, 0.45);
+  backdrop-filter: blur(2px);
+  animation: modal-fade 0.15s ease-out;
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 2rem 2.25rem 2.25rem;
+  box-shadow: var(--shadow);
+  animation: modal-pop 0.18s ease-out;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: var(--surface);
+  color: var(--terra);
+}
+
+.modal-title {
+  font-family: var(--serif);
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  line-height: 1.15;
+  margin: 0 0 1.1rem;
+}
+
+.modal-body {
+  color: var(--ink-soft);
+  line-height: 1.65;
+  margin: 0 0 1rem;
+}
+
+.modal-body strong {
+  color: var(--ink);
+}
+
+.modal-steps {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.modal-steps strong {
+  color: var(--ink);
+}
+
+.modal-steps em,
+.modal-body em {
+  color: var(--terra-dark);
+  font-style: italic;
+}
+
+@keyframes modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ---------- step indicator ---------- */
@@ -404,11 +534,35 @@ button:disabled {
 }
 
 /* ---------- step 3: source tabs ---------- */
+.link-tabs-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
 .link-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1.5rem;
+}
+
+.link-tabs-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: none;
+}
+
+.link-tabs-actions button {
+  padding: 0.45rem 0.95rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 720px) {
+  .link-tabs-row {
+    flex-direction: column;
+  }
 }
 
 .link-tab {
@@ -768,8 +922,16 @@ button:disabled {
   font-size: 1.15rem;
   line-height: 1.7;
   color: var(--ink);
-  margin: 0 0 1.5rem;
+  margin: 0 0 0.75rem;
   white-space: pre-wrap;
+}
+
+.post-credit {
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ink-soft);
+  word-break: break-word;
 }
 
 .post-footer {
