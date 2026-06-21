@@ -619,6 +619,7 @@ button:disabled {
   top: 1rem;
 }
 
+
 .chunk-editor textarea {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 0.85rem;
@@ -740,6 +741,7 @@ button:disabled {
 }
 
 .chunk {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -747,6 +749,31 @@ button:disabled {
   box-shadow: 0 4px 16px -12px rgba(74, 52, 30, 0.4);
   line-height: 1.5;
   overflow-x: auto;
+}
+
+.chunk-delete {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chunk-delete:hover {
+  background: #fdecea;
+  border-color: #e0b4ab;
+  color: #b3261e;
 }
 
 .chunk pre,
