@@ -1086,6 +1086,18 @@ button:disabled {
   bottom: 0.6rem;
 }
 
+/* Smaller inline mic that sits next to an anchor input. */
+.mic-anchor {
+  flex: none;
+  width: 30px;
+  height: 30px;
+}
+
+.mic-anchor svg {
+  width: 15px;
+  height: 15px;
+}
+
 .mic-btn.listening {
   background: var(--terra);
   border-color: var(--terra);

@@ -504,6 +504,11 @@ export default function App() {
                                         placeholder="Anchor phrase"
                                         onChange={(e) => setAnchor(key, j, e.target.value)}
                                       />
+                                      <MicButton
+                                        className="mic-anchor"
+                                        title="Dictate this anchor"
+                                        onResult={(t) => setAnchor(key, j, appendSpoken(a, t))}
+                                      />
                                       <button
                                         type="button"
                                         className="anchor-remove"
