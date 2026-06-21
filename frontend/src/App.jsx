@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { marked } from "marked";
-import { fetchUrl } from "./api";
 
 function slugify(text) {
   return text.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-");
@@ -22,8 +21,10 @@ export default function App() {
   const [rendered, setRendered] = useState(null);
   const [error, setError] = useState("");
   const [anchoredChunks, setAnchoredChunks] = useState(new Map());
-  const [url, setUrl] = useState("");
-  const [loadingUrl, setLoadingUrl] = useState(false);
+  const [message, setMessage] = useState("");
+  const [relatedLinks, setRelatedLinks] = useState(null);
+  const [linksLoading, setLinksLoading] = useState(false);
+  const [linksError, setLinksError] = useState("");
   const fileInputRef = useRef(null);
 
   function chunkBySubHeadings(md) {
@@ -66,23 +67,26 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  async function handleUrl() {
-    const trimmed = url.trim();
+  async function handleSend() {
+    const trimmed = message.trim();
     if (!trimmed) return;
-
-    setError("");
-    setLoadingUrl(true);
+    setMessage("");
+    setRelatedLinks(null);
+    setLinksError("");
+    setLinksLoading(true);
     try {
-      const doc = await fetchUrl(trimmed);
-      // Treat the fetched page text as the source content.
-      setRawMarkdown(doc.text);
-      setSections(chunkBySubHeadings(doc.text));
-      setRendered(null);
+      const res = await fetch("/api/related-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+      setRelatedLinks(data.results ?? []);
     } catch (err) {
-      setError(err.message);
-      setRendered(null);
+      setLinksError(err.message);
     } finally {
-      setLoadingUrl(false);
+      setLinksLoading(false);
     }
   }
 
@@ -107,22 +111,15 @@ export default function App() {
         onChange={handleFile}
       />
 
-      <p className="muted" style={{ textAlign: "left", margin: "0.5rem 0" }}>
-        — or —
-      </p>
-
-      <div className="controls">
-        <input
-          type="text"
-          placeholder="Paste a link (https://…)"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleUrl()}
-          style={{ flex: 1, minWidth: "240px" }}
+      <div className="controls" style={{ alignItems: "flex-end" }}>
+        <textarea
+          placeholder="Type a message…"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          rows={3}
+          style={{ flex: 1, resize: "vertical" }}
         />
-        <button onClick={handleUrl} disabled={loadingUrl}>
-          {loadingUrl ? "Fetching…" : "Fetch from URL"}
-        </button>
+        <button onClick={handleSend}>Send</button>
       </div>
 
       <div className="controls">
@@ -132,6 +129,27 @@ export default function App() {
         </select>
         <button onClick={render}>Retrieve the Content</button>
       </div>
+
+      {linksLoading && <p className="muted">Searching for related links…</p>}
+      {linksError && <p style={{ color: "red" }}>Related links error: {linksError}</p>}
+      {relatedLinks !== null && (
+        <div className="related-links">
+          <h3>Related Links</h3>
+          {relatedLinks.length === 0 ? (
+            <p className="muted">No results found.</p>
+          ) : (
+            <ul>
+              {relatedLinks.map((link, i) => (
+                <li key={i}>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    {link.title || link.url}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {error && <p style={{ color: "red" }}>{error}</p>}
 

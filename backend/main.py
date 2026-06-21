@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import anthropic
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -14,8 +13,8 @@ from pydantic import BaseModel
 from anchors import router as anchors_router
 from related_links import router as related_links_router
 
-# Load backend/.env so ANTHROPIC_API_KEY is available to the SDK.
-load_dotenv()
+# Load backend/.env so API keys are available regardless of working directory.
+load_dotenv(Path(__file__).parent / ".env")
 
 # Reads ANTHROPIC_API_KEY from the environment.
 client = anthropic.Anthropic()
