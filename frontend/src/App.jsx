@@ -314,6 +314,25 @@ export default function App() {
     setAnchoredChunks((prev) => ({ ...prev, [key]: [...(prev[key] || []), ""] }));
   }
 
+  function deleteChunk(linkIdx, ci) {
+    setLinkContent((prev) => {
+      const content = prev[linkIdx];
+      if (!content) return prev;
+      return { ...prev, [linkIdx]: { ...content, chunks: content.chunks.filter((_, i) => i !== ci) } };
+    });
+    setAnchoredChunks((prev) => {
+      const next = {};
+      Object.entries(prev).forEach(([key, anchors]) => {
+        const [kLink, kChunk] = key.split(":").map(Number);
+        if (kLink !== linkIdx) { next[key] = anchors; return; }
+        if (kChunk === ci) return; // deleted chunk's anchors — drop them
+        if (kChunk > ci) next[`${kLink}:${kChunk - 1}`] = anchors;
+        else next[key] = anchors;
+      });
+      return next;
+    });
+  }
+
   const header = STEP_HEADER[step];
 
   return (
@@ -474,6 +493,15 @@ export default function App() {
                         return (
                           <div key={ci} className="chunk-row">
                             <div className="chunk">
+                              <button
+                                type="button"
+                                className="chunk-delete"
+                                aria-label="Delete chunk"
+                                onClick={() => deleteChunk(activeLink, ci)}
+                                title="Delete this chunk"
+                              >
+                                ×
+                              </button>
                               <div
                                 dangerouslySetInnerHTML={{
                                   __html: hasAnchors && anchors ? parseWithAnchors(text) : marked.parse(text, { renderer: noImgRenderer }),
