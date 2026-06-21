@@ -101,15 +101,47 @@ export default function App() {
   }
 
   return (
-    <main className="container">
-      <h1>Source Viewer</h1>
+    <>
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="5" r="2" />
+              <line x1="12" y1="7" x2="12" y2="22" />
+              <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
+            </svg>
+          </span>
+          <span className="brand-name">AnchorPoint</span>
+        </div>
+        <nav className="nav">
+          <a href="#">How it works</a>
+          <a href="#">Examples</a>
+          <a href="#">About</a>
+        </nav>
+      </header>
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".md,.markdown"
-        onChange={handleFile}
-      />
+      <ol className="steps">
+        <li className="step active"><span className="step-num">1</span> Anchor</li>
+        <li className="step"><span className="step-num">2</span> Extract</li>
+        <li className="step"><span className="step-num">3</span> Explore</li>
+      </ol>
+
+      <main className="container">
+        <section className="panel">
+          <p className="eyebrow">Step 1 · Drop your anchor</p>
+          <h1 className="hero">Read deeper. <em>Explore further.</em></h1>
+          <p className="lede">
+            Paste a link or describe what you're researching. AnchorPoint converts
+            the page to clean Markdown, extracts the structural anchors, and saves
+            every link worth following.
+          </p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".md,.markdown"
+            onChange={handleFile}
+          />
 
       <div className="controls" style={{ alignItems: "flex-end" }}>
         <textarea
@@ -202,7 +234,9 @@ export default function App() {
             );
           })
         )}
-      </div>
-    </main>
+        </div>
+        </section>
+      </main>
+    </>
   );
 }
