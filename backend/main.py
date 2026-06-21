@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from anchors import router as anchors_router
+
 # Load backend/.env so ANTHROPIC_API_KEY is available to the SDK.
 load_dotenv()
 
@@ -18,6 +20,7 @@ client = anthropic.Anthropic()
 MODEL = "claude-opus-4-8"
 
 app = FastAPI(title="Doc Prompt API")
+app.include_router(anchors_router)
 
 # Allow the Vite dev server to call this API during development.
 app.add_middleware(

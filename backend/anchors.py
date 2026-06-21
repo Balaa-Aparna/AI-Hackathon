@@ -26,7 +26,7 @@ An anchor is the structural center the content orbits. It is not the topic or ti
 - It is a **force**, not a subject label
 - It explains why the text holds together
 - Removing it collapses coherence
-
+- an anchor is not a heading, anchors are the sentences that drive the heading, without it , without which the author cannot explain his view
 Anchors must be ≤ 15 words.
 
 ---
@@ -37,7 +37,7 @@ Anchors must be ≤ 15 words.
 2. Do not return category-level labels
 3. Anchors must survive a "removal test"
 4. Prefer structural forces over topics
-
+5. anchors are never the heading
 ---
 
 ## OUTPUT
@@ -86,6 +86,23 @@ def _clean(anchors: list[str]) -> list[str]:
     return out[:MAX_ANCHORS]
 
 
+_TOOL = {
+    "name": "extract_anchors",
+    "description": "Return the anchors extracted from the document.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "anchors": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "5-10 anchor phrases extracted from the document",
+            }
+        },
+        "required": ["anchors"],
+    },
+}
+
+
 def extract_anchors(text: str, topic: str = "") -> list[str]:
     client = _get_client()
 
@@ -97,24 +114,22 @@ def extract_anchors(text: str, topic: str = "") -> list[str]:
     )
 
     try:
-        response = client.messages.parse(
+        response = client.messages.create(
             model=MODEL,
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_content}],
-            output_format=AnchorResult,
+            tools=[_TOOL],
+            tool_choice={"type": "tool", "name": "extract_anchors"},
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Claude request failed: {exc}")
 
-    if response.stop_reason == "refusal":
-        raise HTTPException(status_code=502, detail="Claude refused the request.")
+    for block in response.content:
+        if block.type == "tool_use" and block.name == "extract_anchors":
+            return _clean(block.input.get("anchors", []))
 
-    result = getattr(response, "parsed", None)
-    if result is None:
-        raise HTTPException(status_code=502, detail="No parsed output returned.")
-
-    return _clean(result.anchors)
+    raise HTTPException(status_code=502, detail="No anchors returned by model.")
 
 
 @router.post("/api/anchors", response_model=AnchorResult)
