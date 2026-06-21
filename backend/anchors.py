@@ -5,44 +5,69 @@ from typing import Optional
 
 from anthropic import Anthropic
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 MODEL = "claude-haiku-4-5"
-MAX_ANCHORS = 10
+MAX_ANCHORS_FLOOR = 2
+MAX_ANCHORS_CEIL = 8
 MAX_TEXT_CHARS = 50_000
+
+
+def _anchor_limit(text: str) -> int:
+    words = len(text.split())
+    return max(MAX_ANCHORS_FLOOR, min(MAX_ANCHORS_CEIL, words // 200))
 
 
 SYSTEM_PROMPT = """
 ## ROLE
 
-You are an anchor extractor. Given a piece of text, you identify the anchor(s) — the irreducible organizing forces the text is built around.
+You are an anchor extractor. Given a chunk of text with a heading, you identify the anchors — the irreducible organizing forces that drive the content under that heading.
 
 ---
 
 ## WHAT AN ANCHOR IS
 
-An anchor is the structural center the content orbits. It is not the topic or title.
+An anchor is the structural claim or argument the content cannot exist without. It is not the topic, title, or a summary.
 
 - It is a **force**, not a subject label
-- It explains why the text holds together
-- Removing it collapses coherence
-- an anchor is not a heading, anchors are the sentences that drive the heading, without it , without which the author cannot explain his view
+- It explains why this specific section holds together under its heading
+- Removing it collapses the coherence of this chunk
+- An anchor is never the heading itself — it is the sentence or claim that drives the heading; without it the author cannot justify or explain the heading
+- An anchor must be traceable to an actual claim, argument, or assertion present in this chunk — not inferred, not generalized, not borrowed from outside this section
+
 Anchors must be ≤ 10 words.
+
+---
+
+## LOYALTY RULE
+
+**Anchors are entirely loyal to their heading.**
+
+The heading of this chunk is the scope boundary. Every anchor you return must live inside that boundary — it must be a force that drives the content of THIS heading, not the broader article, not the topic, not something implied from elsewhere.
+
+Ask yourself: "Would this anchor still make sense if I only had this heading's section and nothing else?" If not, discard it.
 
 ---
 
 ## RULES
 
-1. Do not force anchors that are not present
-2. Do not return category-level labels
-3. Anchors must survive a "removal test"
-4. Prefer structural forces over topics
-5. anchors are never the heading
+1. **Only extract anchors that are present in the text.** Do not invent, generalize, or infer from context outside this chunk.
+2. Do not return category-level labels or topic summaries
+3. Anchors must survive a "removal test": if you removed this claim, the section under this heading collapses
+4. Prefer the actual structural argument over a re-phrased topic
+5. Anchors are never the heading itself
+6. **Do not pad.** Never fabricate anchors to reach the maximum. Return only genuine ones.
+7. Return at least 2 anchors and no more than the maximum specified for this chunk — fewer is better if the section is focused
+
 ---
 
 ## OUTPUT
 
-Return 5–10 anchors as short phrases.
+For each anchor return an object with two fields:
+- **phrase**: the anchor (≤ 10 words), grounded in the actual text and loyal to this chunk's heading
+- **quote**: the shortest verbatim span from this chunk that the anchor is grounded in (≤ 30 words). Copy it exactly as it appears in the provided text, including any markdown syntax characters.
+
+The exact maximum number of anchors is specified per chunk in the user message.
 """
 
 
@@ -52,13 +77,15 @@ _client: Optional[Anthropic] = None
 
 class AnchorRequest(BaseModel):
     text: str
-    topic: str = ""
+
+
+class AnchorItem(BaseModel):
+    phrase: str
+    quote: str = ""
 
 
 class AnchorResult(BaseModel):
-    anchors: list[str] = Field(
-        ..., description="5-10 anchor words or short phrases extracted from the document"
-    )
+    anchors: list[AnchorItem]
 
 
 def _get_client() -> Anthropic:
@@ -74,28 +101,42 @@ def _get_client() -> Anthropic:
     return _client
 
 
-def _clean(anchors: list[str]) -> list[str]:
+def _clean(anchors: list[dict], max_n: int) -> list[dict]:
     seen = set()
     out = []
     for a in anchors:
-        a = a.strip()
-        k = a.lower()
-        if a and k not in seen:
+        phrase = a.get("phrase", "").strip()
+        quote = a.get("quote", "").strip()
+        k = phrase.lower()
+        if phrase and k not in seen:
             seen.add(k)
-            out.append(a)
-    return out[:MAX_ANCHORS]
+            out.append({"phrase": phrase, "quote": quote})
+    return out[:max_n]
 
 
 _TOOL = {
     "name": "extract_anchors",
-    "description": "Return the anchors extracted from the document.",
+    "description": "Return the anchors extracted from this chunk — each grounded in the actual text and loyal to the chunk's heading. The maximum count is specified in the user message.",
     "input_schema": {
         "type": "object",
         "properties": {
             "anchors": {
                 "type": "array",
-                "items": {"type": "string"},
-                "description": "5-10 anchor phrases extracted from the document",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "phrase": {
+                            "type": "string",
+                            "description": "Anchor phrase (≤ 10 words), grounded in the actual text",
+                        },
+                        "quote": {
+                            "type": "string",
+                            "description": "Shortest verbatim span from this chunk the anchor is grounded in (≤ 30 words, copied exactly as it appears)",
+                        },
+                    },
+                    "required": ["phrase", "quote"],
+                },
+                "description": "Anchors extracted from this chunk, each with a phrase and its source quote",
             }
         },
         "required": ["anchors"],
@@ -103,14 +144,15 @@ _TOOL = {
 }
 
 
-def extract_anchors(text: str, topic: str = "") -> list[str]:
+def extract_anchors(text: str) -> list[dict]:
     client = _get_client()
 
     document = text[:MAX_TEXT_CHARS]
+    max_n = _anchor_limit(document)
 
     user_content = (
-        f"Topic focus: {topic.strip() or '(infer from document)'}\n\n"
-        f"Document:\n{document}"
+        f"Chunk size: ~{len(document.split())} words — return at most {max_n} anchors.\n\n"
+        f"Chunk:\n{document}"
     )
 
     try:
@@ -127,7 +169,7 @@ def extract_anchors(text: str, topic: str = "") -> list[str]:
 
     for block in response.content:
         if block.type == "tool_use" and block.name == "extract_anchors":
-            return _clean(block.input.get("anchors", []))
+            return _clean(block.input.get("anchors", []), max_n)
 
     raise HTTPException(status_code=502, detail="No anchors returned by model.")
 
@@ -137,4 +179,4 @@ def anchors_endpoint(req: AnchorRequest) -> AnchorResult:
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text is required")
 
-    return AnchorResult(anchors=extract_anchors(req.text, req.topic))
+    return AnchorResult(anchors=[AnchorItem(**a) for a in extract_anchors(req.text)])
