@@ -20,13 +20,13 @@ function injectHighlights(md, anchors) {
         new RegExp(escaped),
         `<mark class="anchor-mark" data-ai="${i}" style="--mark-hue:${hue}">$&</mark>`
       );
-    } catch {}
+    } catch { }
   });
   return result;
 }
 
 const STEPS = [
-  { id: 1, name: "Anchor" },
+  { id: 1, name: "Question" },
   { id: 2, name: "Extract" },
   { id: 3, name: "Explore" },
   { id: 4, name: "Review" },
